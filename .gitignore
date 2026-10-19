@@ -43,6 +43,9 @@ pids/
 *.properties.local
 *.yml.local
 *.yaml.local
+# 本地数据库账号密码等敏感配置（模板 application-local.yml.example 需提交）
+**/application-local.yml
+!**/application-local.yml.example
 
 # ===================== 构建产物 =====================
 build/
