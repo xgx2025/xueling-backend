@@ -17,6 +17,7 @@ import com.hope.xueling.english.vocab.mapper.WordBookDictionaryRelationMapper;
 import com.hope.xueling.english.vocab.mapper.WordBookMapper;
 import com.hope.xueling.english.vocab.mapper.WordDictionaryMapper;
 import com.hope.xueling.english.vocab.service.IWordBookService;
+import com.hope.xueling.english.vocab.util.WordNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -147,12 +148,8 @@ public class WordBookServiceImpl implements IWordBookService {
         if (wordList.isEmpty()) return Collections.emptyList();
 
         QueryWrapper<WordDictionary> wrapper = new QueryWrapper<>();
-        wrapper.and(qw -> {
-            for (int i = 0; i < wordList.size(); i++) {
-                if (i > 0) qw.or();
-                qw.apply("UPPER(word) = UPPER({0})", wordList.get(i));
-            }
-        });
+        wrapper.in("word_key", wordList.stream().map(WordNormalizer::normalize).toList())
+                .isNotNull("meaning").ne("meaning", "");
 
         List<WordDictionary> wordDictionaries = wordDictionaryMapper.selectList(wrapper);
         return wordDictionaries.stream().map(wordDictionary -> {

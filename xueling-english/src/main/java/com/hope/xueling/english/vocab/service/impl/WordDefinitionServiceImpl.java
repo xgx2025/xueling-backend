@@ -1,11 +1,16 @@
 package com.hope.xueling.english.vocab.service.impl;
 
 import com.hope.xueling.english.vocab.domain.dto.WordDictionaryDTO;
+import com.hope.xueling.english.vocab.domain.dto.WordTranslationDTO;
 import com.hope.xueling.english.vocab.service.IWordDefinitionService;
+import com.hope.xueling.english.vocab.util.WordNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 翻译服务实现类
@@ -21,20 +26,41 @@ public class WordDefinitionServiceImpl implements IWordDefinitionService {
     @Override
     public WordDictionaryDTO translateWord(String word) {
         String systemPrompt = """
-                # 角色
-                你是专业的英语翻译助手，具备快速准确的翻译能力。
-                # 工作任务
-                接收用户输入的英文单词，按照指定格式返回翻译结果。
-                # 输出示例
-                {"word":"interesting","meaning":"adj. 有趣的；引起兴趣的；令人关注的；有意思的","phonetic":"ˈɪntrəstɪŋ","example":"This is an interesting story book.","exampleTranslation":"这是一本有趣的故事书。"}
-                # 注意
-                对于不存在的单词或其他问题，返回空对象 {"word":"","meaning":"","phonetic":"","example":"","exampleTranslation":""}。
+                你是英汉词典助手。只处理给出的英文单词或短语，输出 JSON 对象，不要 Markdown。
+                格式：{"word":"原输入词","phonetic":"音标","translations":[{"pos":"n.","meanings":["中文义项"]}],"example":"英文例句","exampleTranslation":"例句翻译"}。
+                一个词性可有多个义项；词性使用 n.、v.、adj. 等常见缩写。不能确认释义时返回 translations: []。
+                不要改写 word，也不要凭空生成其他词条。音标或例句不能确认时用空字符串。
                 """;
-        String userPrompt = String.format("请翻译单词 %s ", word);
-        return doubaoChatClient.prompt()
+        WordDictionaryDTO result = doubaoChatClient.prompt()
                 .system(systemPrompt)
-                .user(userPrompt)
+                .user("请翻译：" + word)
                 .call()
                 .entity(WordDictionaryDTO.class);
+        if (result == null || result.getWord() == null || result.getWord().isBlank()) {
+            return null;
+        }
+        try {
+            if (!WordNormalizer.normalize(result.getWord()).equals(WordNormalizer.normalize(word))) {
+                return null;
+            }
+        } catch (RuntimeException ex) {
+            return null;
+        }
+        List<WordTranslationDTO> translations = result.getTranslations();
+        if (translations == null || translations.isEmpty() || translations.stream().anyMatch(item ->
+                item == null || item.getMeanings() == null || item.getMeanings().isEmpty() ||
+                        item.getMeanings().stream().anyMatch(s -> s == null || s.isBlank()))) {
+            return null;
+        }
+        result.setMeaning(translations.stream().map(item ->
+                (item.getPos() == null || item.getPos().isBlank() ? "其他" : item.getPos()) + " " +
+                        item.getMeanings().stream().filter(Objects::nonNull).collect(Collectors.joining("；")))
+                .collect(Collectors.joining("\n")));
+        if (result.getMeaning().length() > 6000 ||
+                (result.getExample() != null && result.getExample().length() > 500) ||
+                (result.getExampleTranslation() != null && result.getExampleTranslation().length() > 500)) {
+            return null;
+        }
+        return result;
     }
 }

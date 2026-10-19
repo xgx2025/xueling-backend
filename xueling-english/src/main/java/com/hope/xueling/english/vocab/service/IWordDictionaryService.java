@@ -1,6 +1,5 @@
 package com.hope.xueling.english.vocab.service;
 
-import com.hope.xueling.english.vocab.domain.dto.WordDictionaryDTO;
 import com.hope.xueling.english.vocab.domain.vo.WordDictionaryVO;
 import com.hope.xueling.english.vocab.domain.vo.WordVO;
 
@@ -25,9 +24,4 @@ public interface IWordDictionaryService {
      */
     List<WordVO> getWordDetailByIds(List<String> wordIds);
 
-    /**
-     * 保存单词字典
-     * @param wordDictionary 单词字典
-     */
-    void saveWordDictionary(Long id,WordDictionaryDTO wordDictionary);
 }

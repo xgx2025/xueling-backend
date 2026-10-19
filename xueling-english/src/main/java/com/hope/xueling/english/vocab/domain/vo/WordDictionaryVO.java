@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 单词字典视图对象
@@ -25,6 +26,8 @@ public class WordDictionaryVO {
      * 释义
      */
     private String meaning;
+    private List<WordTranslationVO> translations;
+    private String source;
     /**
      * 音标
      */

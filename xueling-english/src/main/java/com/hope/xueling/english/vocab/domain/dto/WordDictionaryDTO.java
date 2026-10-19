@@ -1,6 +1,7 @@
 package com.hope.xueling.english.vocab.domain.dto;
 
 import lombok.Data;
+import java.util.List;
 /**
  * 单词字典数据传输对象（用于AI翻译的响应）
  * @author 谢光湘
@@ -16,6 +17,7 @@ public class WordDictionaryDTO {
      * 单词含义
      */
     private String meaning;
+    private List<WordTranslationDTO> translations;
     /**
      * 单词音标
      */

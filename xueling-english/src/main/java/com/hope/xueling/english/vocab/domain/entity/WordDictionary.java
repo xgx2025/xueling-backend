@@ -1,5 +1,7 @@
 package com.hope.xueling.english.vocab.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
@@ -15,11 +17,13 @@ public class WordDictionary {
     /**
      * 主键ID
      */
+    @TableId(type = IdType.AUTO)
     private Long id;
     /**
      * 单词
      */
     private String word;
+    private String wordKey;
     /**
      * 释义
      */
@@ -28,6 +32,18 @@ public class WordDictionary {
      * 音标
      */
     private String phonetic;
+    private String definition;
+    private String pos;
+    private Integer collins;
+    private Integer oxford;
+    private String tag;
+    private Integer bnc;
+    private Integer frq;
+    private String exchange;
+    private String detail;
+    private String audio;
+    private String source;
+    private String datasetVersion;
     /**
      * 英文例句
      */
