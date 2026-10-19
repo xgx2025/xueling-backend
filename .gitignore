@@ -1,42 +1,20 @@
-# ===================== 所有IDE的配置文件 (含IDEA+STS+Eclipse+VSCode) =====================
-# IDEA
-.idea/
-*.iws
-*.iml
-*.ipr
-# STS & Eclipse
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-# VS Code
-.vscode/
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
 
-# ===================== Maven 相关 =====================
-# 忽略Maven编译打包产物（核心，必须保留）
+# Build artifacts
+dist/
+build/
 target/
-# 保留maven wrapper核心文件（必须提交，保证项目一键构建）
-!.mvn/wrapper/maven-wrapper.jar
 
-# ===================== 日志文件 & 临时文件 =====================
-logs/
+# Logs and temp files
 *.log
 *.tmp
-*.bak
 *.swp
-*.swo
 
-# ===================== 项目运行时数据 =====================
-pids/
-*.pid
-*.lock
-*.sock
-
-# ===================== 本地环境配置文件  =====================
-# 本地环境变量
+# Environment
 .env
 .env.local
 # 本地自定义配置
@@ -46,27 +24,66 @@ pids/
 # 本地数据库账号密码等敏感配置（模板 application-local.yml.example 需提交）
 **/application-local.yml
 !**/application-local.yml.example
+*.env.*
 
-# ===================== 构建产物 =====================
-build/
-/dist/
-/nbdist/
-/.nb-gradle/
+# Editors
+.vscode/
+.idea/
 
-# ===================== 测试报告 =====================
-# Maven单元测试/集成测试报告
-surefire-reports/
-failsafe-reports/
-
-# ===================== 操作系统自动生成的垃圾文件 =====================
-# Mac OS
+# OS
 .DS_Store
-# Windows
 Thumbs.db
-# Linux
-*~
 
-# ===================== AI/ML 模型缓存（按需启用） =====================
-# models/
-# data/
-# .cache/
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+
+# Compiled files
+*.class
+*.o
+*.exe
+*.dll
+*.so
+*.a
+*.obj
+*.out
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+
+# Caching
+.mypy_cache/
+.pytest_cache/
+.gradle/
+julia-*/
+zig*/
