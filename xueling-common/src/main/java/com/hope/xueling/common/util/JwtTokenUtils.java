@@ -18,14 +18,14 @@ import java.util.Map;
 public class JwtTokenUtils {
 
 
-    public static final String ACCESS_TOKEN_SECRET = "xueling_access_secret";
+    public static final String ACCESS_TOKEN_SECRET = "xueling-access-secret";
     /**
      * Access Token密钥和过期时间(30分钟)
      */
     public static final long ACCESS_TOKEN_EXPIRE =  30 * 60 * 1000;
 
 
-    public static final String REFRESH_TOKEN_SECRET = "xueling_refresh_secret";
+    public static final String REFRESH_TOKEN_SECRET = "xueling-refresh-secret";
     /**
      * Refresh Token密钥和过期时间(7天)
      */
@@ -37,10 +37,10 @@ public class JwtTokenUtils {
      */
     public static String generateAccessToken(Map<String, Object> claims) throws IllegalArgumentException, ExpiredJwtException{
         return Jwts.builder()
-                .setClaims(claims)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRE))
-                .signWith(SignatureAlgorithm.HS256, ACCESS_TOKEN_SECRET)
+                .claims(claims)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRE))
+                .signWith(generateKey(ACCESS_TOKEN_SECRET))
                 .compact();
     }
 
@@ -49,10 +49,10 @@ public class JwtTokenUtils {
      */
     public static String generateRefreshToken(Map<String, Object> claims) throws IllegalArgumentException, ExpiredJwtException{
         return Jwts.builder()
-                .setClaims(claims)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRE))
-                .signWith(SignatureAlgorithm.HS256, REFRESH_TOKEN_SECRET)
+                .claims(claims)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRE))
+                .signWith(generateKey(REFRESH_TOKEN_SECRET))
                 .compact();
     }
 
@@ -63,7 +63,7 @@ public class JwtTokenUtils {
         if (keyBytes.length < 32) {
             // 如果密钥太短，进行填充
             byte[] padded = new byte[32];
-            System.arraycopy(keyBytes, 0, padded, 0, Math.min(keyBytes.length, 32));
+            System.arraycopy(keyBytes, 0, padded, 0, keyBytes.length);
             keyBytes = padded;
         }
         return Keys.hmacShaKeyFor(keyBytes);
