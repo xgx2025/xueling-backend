@@ -42,11 +42,13 @@
 
     <build>
         <plugins>
+            <!-- xueling-admin 目前没有启用的启动类（XuelingAdminApplication 已注释），
+                 跳过 spring-boot repackage，避免 mvn package 失败 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <classifier>exec</classifier>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
         </plugins>

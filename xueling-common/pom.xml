@@ -38,11 +38,13 @@
 
     <build>
         <plugins>
+            <!-- xueling-common 是库模块（无启动类），跳过 spring-boot repackage，
+                 否则 mvn package 会因 “Unable to find main class” 失败 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <classifier>exec</classifier>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
         </plugins>
