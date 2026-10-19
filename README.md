@@ -75,24 +75,16 @@ cd 学灵
 ```
 
 2. **配置数据库**
-创建 MySQL 数据库并修改配置文件中的数据库连接信息。
+创建 MySQL 数据库 `xueling_db`。
 
 3. **配置文件**
-在 `xueling-english/src/main/resources/` 目录下创建或修改 `application.yml`：
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/xueling?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
-    username: your_username
-    password: your_password
-  data:
-    redis:
-      host: localhost
-      port: 6379
-  ai:
-    openai:
-      api-key: your-openai-api-key
+复制 `xueling-english/src/main/resources/application.yml.example` 为同目录下的 `application.yml`，按需填写数据库、Redis 和其他服务配置。`application.yml` 是本地配置，已被 Git 忽略；提交配置变更时请修改模板文件。
+
+```bash
+cp xueling-english/src/main/resources/application.yml.example xueling-english/src/main/resources/application.yml
 ```
+
+Windows PowerShell 可使用 `Copy-Item` 执行同样的复制操作。首次运行还需配置模板中引用的 API 密钥等环境变量。
 
 4. **构建项目**
 ```bash

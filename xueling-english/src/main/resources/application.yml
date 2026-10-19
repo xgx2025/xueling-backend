@@ -1,9 +1,0 @@
-# english模块的application.yml
-spring:
-  profiles:
-    include: common # 引入common模块的application-common.yml配置
-  config:
-    # 加载本地数据库账号密码等敏感配置（该文件不提交到仓库，模板见 application-local.yml.example）
-    import: optional:classpath:application-local.yml
-  main:
-    allow-bean-definition-overriding: true

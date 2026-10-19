@@ -1,8 +1,8 @@
-server:
-  port: 9012
-
-
+# 复制为 application.yml 后填写 xueling.datasource 和 xueling.redis 配置。
+# application.yml 已被 Git 忽略，请勿在此模板中填写真实凭据。
 spring:
+  main:
+    allow-bean-definition-overriding: true
   ai:
     openai:
       api-key: ${DEEPSEEK_API_KEY}
@@ -20,7 +20,7 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/xueling_db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true
-    # 账号密码优先取本地配置 application-local.yml（不提交到仓库，模板见 application-local.yml.example），
+    # 账号密码优先取本地配置 application.yml（不提交到仓库，模板见 application.yml.example），
     # 其次回退到全局环境变量 mysql_username / mysql_password（兼容旧用法）。
     # 注意：全局环境变量会被同一台机器上的其他项目覆盖，建议使用项目内的本地配置文件。
     username: ${xueling.datasource.username:${mysql_username:}}
@@ -98,7 +98,7 @@ spring:
       database: 1
       host: localhost
       port: 6379
-      # 密码同样来自本地配置 application-local.yml；Redis 未设密码时留空即可
+      # 密码同样来自本地配置 application.yml；Redis 未设密码时留空即可
       password: ${xueling.redis.password:}
       lettuce:
         pool:
@@ -119,6 +119,8 @@ spring:
       write-dates-as-timestamps: false
       write-date-timestamps-as-nanoseconds: false
 
+server:
+  port: 9012
 
 #阿里云OSS配置
 aliyun:
@@ -157,3 +159,33 @@ llm:
     api-key: ${ZHIPU_API_KEY}
     url: "https://open.bigmodel.cn/api/paas/v4"
     image-model: "cogview-3-flash"
+
+feign:
+  client:
+    config:
+      default:  # 全局默认配置
+        connect-timeout: 5000  # 连接超时（毫秒）
+        read-timeout: 10000    # 读取超时（毫秒）
+
+# ============================================================
+# 本地开发配置模板
+#
+# 使用方式：
+#   1. 复制本文件为同目录下的 application.yml
+#      Windows: copy application.yml.example application.yml
+#      macOS/Linux: cp application.yml.example application.yml
+#   2. 在 application.yml 中填入真实的数据库 / Redis 账号密码
+#   3. application.yml 已被 .gitignore 忽略，不会提交到仓库
+#
+# 生效优先级：
+#   application.yml  >  环境变量 mysql_username / mysql_password
+# ============================================================
+xueling:
+  datasource:
+    # 数据库账号（xueling_db 的拥有者）
+    username: your_mysql_username
+    # 数据库密码
+    password: your_mysql_password
+  redis:
+    # Redis 密码；若 Redis 未设置 requirepass，保持空字符串即可
+    password: your_redis_password

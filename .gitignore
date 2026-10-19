@@ -21,9 +21,8 @@ target/
 *.properties.local
 *.yml.local
 *.yaml.local
-# 本地数据库账号密码等敏感配置（模板 application-local.yml.example 需提交）
-**/application-local.yml
-!**/application-local.yml.example
+# 后端本地配置（提交 application.yml.example 模板）
+xueling-english/src/main/resources/application.yml
 *.env.*
 
 # Editors
