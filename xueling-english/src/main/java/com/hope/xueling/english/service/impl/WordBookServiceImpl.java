@@ -1,6 +1,5 @@
 package com.hope.xueling.english.service.impl;
 
-import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.hope.xueling.common.exception.BusinessException;
 import com.hope.xueling.common.exception.ValidationException;
@@ -65,7 +64,6 @@ public class WordBookServiceImpl implements IWordBookService {
         }
         WordBook wordBook = new WordBook();
         wordBook.setUserId(userId);
-        wordBook.setId(IdUtil.getSnowflakeNextId());
         wordBook.setName(createWordBookDTO.getName());
         wordBook.setColor(createWordBookDTO.getColor());
         wordBook.setIcon(createWordBookDTO.getIcon());
@@ -192,7 +190,6 @@ public class WordBookServiceImpl implements IWordBookService {
         });
         List<WordBookDictionaryRelation> needAddRelations = needAddWordIds.stream().map(wordId -> {
             WordBookDictionaryRelation relation = new WordBookDictionaryRelation();
-            relation.setId(IdUtil.getSnowflakeNextId());
             relation.setWordBookId(wordBookId);
             relation.setWordId(wordId);
             return relation;

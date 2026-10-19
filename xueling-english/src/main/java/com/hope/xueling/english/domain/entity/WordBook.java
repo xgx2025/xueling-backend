@@ -1,5 +1,8 @@
 package com.hope.xueling.english.domain.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -10,10 +13,12 @@ import java.time.LocalDateTime;
  * @since 2026/1/25
  */
 @Data
+@TableName("word_book")
 public class WordBook {
     /**
-     * 单词本ID
+     * 单词本ID（由 MyBatis-Plus 雪花算法统一生成）
      */
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
      /**
      * 单词本创建人ID

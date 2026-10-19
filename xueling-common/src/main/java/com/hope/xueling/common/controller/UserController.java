@@ -47,7 +47,8 @@ public class UserController {
     public Result<String> profile(@RequestBody UserDTO userDTO) {
         Claims claims = ThreadLocalUtils.get();
         Long userId = claims.get("userId", Long.class);
-        userDTO.setId(userId);
+        // 用户ID一律以令牌为准，忽略请求体中的 id；DTO 对外约定为字符串
+        userDTO.setId(String.valueOf(userId));
         userService.updateUserById(userDTO);
         log.info("用户信息更新成功");
         return Result.success("用户信息更新成功");

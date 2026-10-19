@@ -7,12 +7,12 @@ import com.hope.xueling.common.domain.dto.UserDTO;
 import com.hope.xueling.common.domain.entity.User;
 import com.hope.xueling.common.domain.vo.UserVO;
 import com.hope.xueling.common.exception.BusinessException;
+import com.hope.xueling.common.exception.ValidationException;
 import com.hope.xueling.common.mapper.UserMapper;
 import com.hope.xueling.common.service.IUserService;
 import com.hope.xueling.common.util.AliOSSUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.sf.jsqlparser.util.validation.ValidationException;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,12 +35,9 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public void insertUser(User user) {
-        long userId = IdUtil.getSnowflakeNextId();
-        user.setId(userId);
-        //查询此时用户总数
-        long count = userMapper.selectCount(null);
-        long index = count + 1;
-        user.setUsername("学灵"+index);
+        // 主键由 MyBatis-Plus 统一生成（见 User#id 上的 @TableId），此处不再手动赋值，
+        // 避免应用层雪花ID与数据库 AUTO_INCREMENT 两套策略并存。
+        user.setUsername(generateUniqueUsername());
         user.setAvatarUrl(DEFAULT_AVATAR_URL);
         userMapper.insert(user);
     }
@@ -83,29 +80,31 @@ public class UserServiceImpl implements IUserService {
 
     @Override
     public void updateUserById(UserDTO userDTO) {
-        User user = new User();
-        BeanUtils.copyProperties(userDTO, user);
+        // DTO 的 id 是对外的字符串形式，这里转回 Long 参与数据库操作
+        Long userId = parseUserId(userDTO.getId());
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
-        updateWrapper.eq("id", userDTO.getId());
-        if (user.getBio() != null) {
-            if (user.getBio().length() > 500) {
+        updateWrapper.eq("id", userId);
+        if (userDTO.getBio() != null) {
+            if (userDTO.getBio().length() > 500) {
                 throw new ValidationException("个人简介不能超过500字");
             }
-            updateWrapper.set("bio", user.getBio());
+            updateWrapper.set("bio", userDTO.getBio());
         }
-        if (user.getBirthday() != null) {
-            updateWrapper.set("birthday", user.getBirthday());
+        if (userDTO.getBirthday() != null) {
+            updateWrapper.set("birthday", userDTO.getBirthday());
         }
-        if (user.getGender() != null) {
-            updateWrapper.set("gender", user.getGender());
+        if (userDTO.getGender() != null) {
+            updateWrapper.set("gender", userDTO.getGender());
         }
-        if (user.getUsername() != null) {
-            if (user.getUsername().length() > 20) {
+        if (userDTO.getUsername() != null) {
+            if (userDTO.getUsername().length() > 20) {
                 throw new ValidationException("用户名不能超过20字");
             }
-            updateWrapper.set("username", user.getUsername());
+            updateWrapper.set("username", userDTO.getUsername());
         }
-        userMapper.update(user, updateWrapper);
+        // 传 null 而不是实体对象：避免 BeanUtils 拷贝进来的 email/phone/avatarUrl 等
+        // 非空字段被 MyBatis-Plus 自动拼进 SET 子句（那些字段不允许通过该接口修改）
+        userMapper.update(null, updateWrapper);
     }
 
 
@@ -118,9 +117,11 @@ public class UserServiceImpl implements IUserService {
         //根据用户ID查询用户信息
         User user = userMapper.selectById(id);
         if (user != null) {
-            //将用户实体类转换为用户数据传输对象
+            //将用户实体类转换为用户视图对象
             UserVO userVO = new UserVO();
             BeanUtils.copyProperties(user, userVO);
+            // 实体 id 是 Long、VO id 是 String，类型不一致时 BeanUtils 会静默跳过，必须显式转换
+            userVO.setId(String.valueOf(user.getId()));
             return userVO;
         }
         //用户不存在异常
@@ -203,6 +204,42 @@ public class UserServiceImpl implements IUserService {
         //TODO 注销用户账号
         //逻辑删除用户
         userMapper.updateAccountStatusById(userId);
+    }
+
+    /**
+     * 生成唯一用户名
+     * <p>原实现使用“用户总数+1”作为序号，并发注册或存在注销用户时会与
+     * username 唯一索引冲突。改为取雪花ID后6位，并在落库前查重。</p>
+     * @return 未被占用的用户名
+     */
+    private String generateUniqueUsername() {
+        for (int i = 0; i < 5; i++) {
+            String snowflakeId = IdUtil.getSnowflakeNextIdStr();
+            String username = "学灵" + snowflakeId.substring(snowflakeId.length() - 6);
+            QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("username", username);
+            if (userMapper.selectCount(queryWrapper) == 0) {
+                return username;
+            }
+        }
+        // 极端情况下（连续5次撞名）退回完整雪花ID，保证唯一
+        return "学灵" + IdUtil.getSnowflakeNextIdStr();
+    }
+
+    /**
+     * 将对外的字符串用户ID转换为 Long
+     * @param id 字符串形式的用户ID
+     * @return Long 用户ID
+     */
+    private Long parseUserId(String id) {
+        if (id == null || id.isBlank()) {
+            throw new ValidationException("用户ID不能为空");
+        }
+        try {
+            return Long.parseLong(id);
+        } catch (NumberFormatException e) {
+            throw new ValidationException("用户ID格式错误");
+        }
     }
 
 

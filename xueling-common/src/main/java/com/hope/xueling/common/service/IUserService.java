@@ -39,7 +39,7 @@ public interface IUserService {
     /**
      * 根据用户ID获取用户信息
      * @param id 用户ID
-     * @return UserDTO 用户数据传输对象
+     * @return UserVO 用户视图对象
      */
     UserVO getUserInfo(Long id);
 
