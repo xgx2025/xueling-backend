@@ -14,8 +14,12 @@
 
 ```
 学灵 (xueling)/
-├── xueling-common/          # 公共模块 - 包含通用工具类、常量定义等
-├── xueling-english/         # 英语学习模块 - 英语单词记忆学习功能
+├── xueling-common/          # 当前承载用户、认证和公共基础能力
+├── xueling-english/         # 英语业务模块及应用启动入口
+│   └── src/main/java/com/hope/xueling/english/
+│       ├── vocab/           # 词书、词典、复习及翻译
+│       └── reading/         # 阅读文章及测试
+├── xueling-admin/           # 文章管理模块
 ├── pom.xml                  # 父工程 Maven 配置
 ├── mvnw                     # Maven Wrapper 脚本 (Unix)
 └── mvnw.cmd                 # Maven Wrapper 脚本 (Windows)

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.hope.xueling.english.mapper.ArticleMapper">
+<mapper namespace="com.hope.xueling.english.reading.mapper.ArticleMapper">
 
     <!-- 根据文章ID获取文章翻译,（根据userId到user表查询用户的vip_level>0,如果大于0,则查询，否则不查询） -->
     <select id="selectArticleTranslation" resultType="java.lang.String">
