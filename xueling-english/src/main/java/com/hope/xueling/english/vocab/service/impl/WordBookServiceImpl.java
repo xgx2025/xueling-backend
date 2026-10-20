@@ -93,7 +93,10 @@ public class WordBookServiceImpl implements IWordBookService {
             wordBookVo.setName(wordBook.getName());
             wordBookVo.setWordCount(wordBook.getWordCount());
             int learned = studyMapper.bookLearnedCount(userId, wordBook.getId());
-            wordBookVo.setMastery(wordBook.getWordCount() == 0 ? 0 : learned * 100 / wordBook.getWordCount());
+            int coverage = wordBook.getWordCount() == 0 ? 0
+                    : Math.min(100, learned * 100 / wordBook.getWordCount());
+            wordBookVo.setLearningCoverage(coverage);
+            wordBookVo.setMastery(coverage);
             wordBookVo.setLearnedCount(learned);
             wordBookVo.setStudyEnabled(studyMapper.bookEnabled(userId, wordBook.getId()));
             wordBookVo.setBookType(wordBook.getBookType());
@@ -113,7 +116,10 @@ public class WordBookServiceImpl implements IWordBookService {
         wordBookDetailVO.setName(wordBook.getName());
         wordBookDetailVO.setWordCount(wordBook.getWordCount());
         int learned = studyMapper.bookLearnedCount(userId, wordBookId);
-        wordBookDetailVO.setMastery(wordBook.getWordCount() == 0 ? 0 : learned * 100 / wordBook.getWordCount());
+        int coverage = wordBook.getWordCount() == 0 ? 0
+                : Math.min(100, learned * 100 / wordBook.getWordCount());
+        wordBookDetailVO.setLearningCoverage(coverage);
+        wordBookDetailVO.setMastery(coverage);
         wordBookDetailVO.setLearnedCount(learned);
         wordBookDetailVO.setStudyEnabled(studyMapper.bookEnabled(userId, wordBookId));
         wordBookDetailVO.setBookType(wordBook.getBookType());

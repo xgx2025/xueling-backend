@@ -11,6 +11,7 @@ import com.hope.xueling.english.vocab.service.IStudyService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,6 +37,16 @@ public class StudyController {
     @GetMapping("/stats")
     public Result<StudyStatsVO> stats() {
         return Result.success(studyService.stats(userId()));
+    }
+
+    @GetMapping("/history")
+    public Result<List<StudyDayStatsVO>> history(@RequestParam(defaultValue = "7") int days) {
+        return Result.success(studyService.history(userId(), days));
+    }
+
+    @GetMapping("/review-counts")
+    public Result<StudyReviewCountVO> reviewCounts() {
+        return Result.success(studyService.reviewCounts(userId()));
     }
 
     @GetMapping("/settings")

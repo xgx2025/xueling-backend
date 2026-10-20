@@ -5,12 +5,17 @@ import com.hope.xueling.english.vocab.domain.dto.UpdateStudySettingsDTO;
 import com.hope.xueling.english.vocab.domain.vo.StudyReviewResultVO;
 import com.hope.xueling.english.vocab.domain.vo.StudySettingsVO;
 import com.hope.xueling.english.vocab.domain.vo.StudyStatsVO;
+import com.hope.xueling.english.vocab.domain.vo.StudyDayStatsVO;
+import com.hope.xueling.english.vocab.domain.vo.StudyReviewCountVO;
 import com.hope.xueling.english.vocab.domain.vo.TodayStudyVO;
+import java.util.List;
 
 public interface IStudyService {
     TodayStudyVO today(long userId);
     StudyReviewResultVO submitReview(long userId, SubmitStudyReviewDTO request);
     StudyStatsVO stats(long userId);
+    List<StudyDayStatsVO> history(long userId, int days);
+    StudyReviewCountVO reviewCounts(long userId);
     StudySettingsVO settings(long userId);
     StudySettingsVO updateSettings(long userId, UpdateStudySettingsDTO request);
     void setBookEnabled(long userId, long bookId, boolean enabled);

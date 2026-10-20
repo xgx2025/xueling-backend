@@ -25,9 +25,9 @@ public class WordBookDetailVO {
      * 单词总数
      */
     private Integer wordCount;
-    /**
-     * 掌握度（0-100）
-     */
+    /** 已学习词数占比（0-100），不代表已掌握。 */
+    private Integer learningCoverage;
+    /** 兼容旧客户端；新客户端应使用 learningCoverage。 */
     private Integer mastery;
     private Integer learnedCount;
     private Boolean studyEnabled;

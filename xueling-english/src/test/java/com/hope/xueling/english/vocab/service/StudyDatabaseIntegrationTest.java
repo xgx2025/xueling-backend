@@ -27,10 +27,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfEnvironmentVariable(named = "XUELING_STUDY_DB_TEST", matches = "true")
 class StudyDatabaseIntegrationTest {
+    private static String jdbcUrl() {
+        String port = System.getenv().getOrDefault("XUELING_DB_PORT", "3306");
+        return "jdbc:mysql://127.0.0.1:" + port + "/xueling_db?serverTimezone=Asia/Shanghai";
+    }
+
     @Test
     void newCardIsSavedOnceAndAllFixtureRowsAreRolledBack() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(
-                "jdbc:mysql://127.0.0.1:3306/xueling_db?serverTimezone=Asia/Shanghai",
+                jdbcUrl(),
                 System.getenv("XUELING_DB_USERNAME"), System.getenv("XUELING_DB_PASSWORD"));
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         StudyServiceImpl service = new StudyServiceImpl(new StudyMapper(jdbc), new FsrsReviewScheduler());
@@ -61,6 +66,10 @@ class StudyDatabaseIntegrationTest {
                     "SELECT COUNT(*) FROM word_review_record WHERE user_id=?", Integer.class, userId));
             assertEquals(1, jdbc.queryForObject(
                     "SELECT COUNT(*) FROM word_learning_progress WHERE user_id=?", Integer.class, userId));
+            var history = service.history(userId, 7).getLast();
+            assertEquals(1, history.reviewCount());
+            assertEquals(1, history.newWords());
+            assertEquals(1, service.reviewCounts(userId).once());
             status.setRollbackOnly();
             return null;
         });
@@ -72,7 +81,7 @@ class StudyDatabaseIntegrationTest {
     @Test
     void sharedWordsAreQueuedOnceAndRecallRateExcludesShortTermLearning() {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(
-                "jdbc:mysql://127.0.0.1:3306/xueling_db?serverTimezone=Asia/Shanghai",
+                jdbcUrl(),
                 System.getenv("XUELING_DB_USERNAME"), System.getenv("XUELING_DB_PASSWORD"));
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         StudyMapper mapper = new StudyMapper(jdbc);
@@ -117,7 +126,7 @@ class StudyDatabaseIntegrationTest {
     @Test
     void concurrentNewCardRatingsSaveOnlyOneReview() throws Exception {
         DriverManagerDataSource dataSource = new DriverManagerDataSource(
-                "jdbc:mysql://127.0.0.1:3306/xueling_db?serverTimezone=Asia/Shanghai",
+                jdbcUrl(),
                 System.getenv("XUELING_DB_USERNAME"), System.getenv("XUELING_DB_PASSWORD"));
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         StudyMapper mapper = new StudyMapper(jdbc);

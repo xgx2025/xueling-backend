@@ -8,21 +8,35 @@ import com.hope.xueling.english.vocab.domain.vo.*;
 import com.hope.xueling.english.vocab.mapper.StudyMapper;
 import com.hope.xueling.english.vocab.service.IStudyService;
 import com.hope.xueling.english.vocab.service.ReviewScheduler;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class StudyServiceImpl implements IStudyService {
     private static final int PAGE_SIZE = 20;
     private final StudyMapper studyMapper;
     private final ReviewScheduler reviewScheduler;
+    private final Clock clock;
+
+    @Autowired
+    public StudyServiceImpl(StudyMapper studyMapper, ReviewScheduler reviewScheduler) {
+        this(studyMapper, reviewScheduler, Clock.systemUTC());
+    }
+
+    public StudyServiceImpl(StudyMapper studyMapper, ReviewScheduler reviewScheduler, Clock clock) {
+        this.studyMapper = studyMapper;
+        this.reviewScheduler = reviewScheduler;
+        this.clock = clock;
+    }
 
     private record DayWindow(LocalDate date, Instant start, Instant end) {}
 
@@ -33,8 +47,8 @@ public class StudyServiceImpl implements IStudyService {
                 date.plusDays(1).atStartOfDay(zone).toInstant());
     }
 
-    private static Instant now() {
-        return Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private Instant now() {
+        return clock.instant().truncatedTo(ChronoUnit.MILLIS);
     }
 
     @Override
@@ -153,6 +167,58 @@ public class StudyServiceImpl implements IStudyService {
                 studyMapper.countIntroduced(userId, day.date()), studyMapper.countLearned(userId),
                 studyMapper.countDue(userId, now), attempts,
                 attempts == 0 ? null : (double) successes / attempts);
+    }
+
+    private static class DayAggregate {
+        int reviews;
+        int newWords;
+        long elapsedMs;
+        int dueAttempts;
+        int dueSuccesses;
+    }
+
+    @Override
+    @Transactional
+    public List<StudyDayStatsVO> history(long userId, int days) {
+        if (days != 7 && days != 30) throw new ValidationException("仅支持近7天或30天");
+        studyMapper.ensureSettings(userId);
+        ZoneId zone = ZoneId.of(studyMapper.settings(userId, false).getTimeZone());
+        Instant current = now();
+        LocalDate today = current.atZone(zone).toLocalDate();
+        LocalDate first = today.minusDays(days - 1L);
+        Instant start = first.atStartOfDay(zone).toInstant();
+        Instant end = today.plusDays(1).atStartOfDay(zone).toInstant();
+        Map<LocalDate, DayAggregate> aggregates = new HashMap<>();
+        for (StudyMapper.HistoryReviewRow row : studyMapper.historyReviews(userId, start, end)) {
+            LocalDate date = row.reviewedAt().atZone(zone).toLocalDate();
+            DayAggregate aggregate = aggregates.computeIfAbsent(date, ignored -> new DayAggregate());
+            aggregate.reviews++;
+            if (row.dueBefore() == null) aggregate.newWords++;
+            aggregate.elapsedMs += row.elapsedMs() == null ? 0 : row.elapsedMs();
+            if ("REVIEW".equals(row.stateBefore()) && row.dueBefore() != null
+                    && !row.dueBefore().isAfter(row.reviewedAt())) {
+                aggregate.dueAttempts++;
+                if (row.rating() > 1) aggregate.dueSuccesses++;
+            }
+        }
+        List<StudyDayStatsVO> result = new ArrayList<>(days);
+        for (int i = 0; i < days; i++) {
+            LocalDate date = first.plusDays(i);
+            DayAggregate aggregate = aggregates.getOrDefault(date, new DayAggregate());
+            Instant cutoff = date.equals(today) ? current : date.plusDays(1).atStartOfDay(zone).toInstant();
+            result.add(new StudyDayStatsVO(date, aggregate.reviews, aggregate.newWords,
+                    aggregate.elapsedMs, aggregate.dueAttempts,
+                    aggregate.dueAttempts == 0 ? null : (double) aggregate.dueSuccesses / aggregate.dueAttempts,
+                    studyMapper.dueBacklogAt(userId, cutoff)));
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public StudyReviewCountVO reviewCounts(long userId) {
+        studyMapper.ensureSettings(userId);
+        return studyMapper.reviewCounts(userId);
     }
 
     @Override

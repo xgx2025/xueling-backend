@@ -3,6 +3,7 @@ package com.hope.xueling.english.vocab.mapper;
 import com.hope.xueling.english.vocab.domain.vo.StudyQueueCardVO;
 import com.hope.xueling.english.vocab.domain.vo.StudySettingsVO;
 import com.hope.xueling.english.vocab.domain.vo.StudyReviewResultVO;
+import com.hope.xueling.english.vocab.domain.vo.StudyReviewCountVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -24,6 +25,8 @@ public class StudyMapper {
                               int version, int reviewCount, int lapseCount) {}
 
     public record PreviousReview(long wordId, int rating, StudyReviewResultVO result) {}
+    public record HistoryReviewRow(Instant reviewedAt, Instant dueBefore,
+                                   String stateBefore, int rating, Integer elapsedMs) {}
 
     private static Instant utc(ResultSet rs, String column) throws SQLException {
         LocalDateTime value = rs.getObject(column, LocalDateTime.class);
@@ -124,6 +127,26 @@ public class StudyMapper {
                 userId, dbTime(start), dbTime(end));
     }
 
+    public List<HistoryReviewRow> historyReviews(long userId, Instant start, Instant end) {
+        return jdbc.query("SELECT r.reviewed_at,r.due_before,r.rating,r.elapsed_ms,"
+                        + "(SELECT previous_review.state_after FROM word_review_record previous_review "
+                        + "WHERE previous_review.progress_id=r.progress_id AND previous_review.id<r.id "
+                        + "ORDER BY previous_review.id DESC LIMIT 1) AS state_before "
+                        + "FROM word_review_record r WHERE r.user_id=? AND r.reviewed_at>=? AND r.reviewed_at<? "
+                        + "ORDER BY r.reviewed_at,r.id",
+                (rs, rowNum) -> new HistoryReviewRow(utc(rs, "reviewed_at"), utc(rs, "due_before"),
+                        rs.getString("state_before"), rs.getInt("rating"),
+                        rs.getObject("elapsed_ms", Integer.class)), userId, dbTime(start), dbTime(end));
+    }
+
+    public int dueBacklogAt(long userId, Instant cutoff) {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM word_review_record r JOIN "
+                        + "(SELECT progress_id,MAX(id) AS last_id FROM word_review_record "
+                        + "WHERE user_id=? AND reviewed_at<? GROUP BY progress_id) latest ON r.id=latest.last_id "
+                        + "WHERE r.due_after<?", Integer.class,
+                userId, dbTime(cutoff), dbTime(cutoff));
+    }
+
     public ProgressRow progressForUpdate(long userId, long wordId) {
         List<ProgressRow> rows = jdbc.query("SELECT id,card_json,state,due_at,version,review_count,lapse_count "
                 + "FROM word_learning_progress WHERE user_id=? AND word_id=? AND card_type='EN_ZH' FOR UPDATE",
@@ -188,6 +211,17 @@ public class StudyMapper {
     public int countLearned(long userId) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM word_learning_progress WHERE user_id=? AND card_type='EN_ZH'",
                 Integer.class, userId);
+    }
+
+    public StudyReviewCountVO reviewCounts(long userId) {
+        return jdbc.queryForObject("SELECT "
+                        + "COALESCE(SUM(CASE WHEN review_count=1 THEN 1 ELSE 0 END),0) AS once_count,"
+                        + "COALESCE(SUM(CASE WHEN review_count=2 THEN 1 ELSE 0 END),0) AS twice_count,"
+                        + "COALESCE(SUM(CASE WHEN review_count BETWEEN 3 AND 5 THEN 1 ELSE 0 END),0) AS middle_count,"
+                        + "COALESCE(SUM(CASE WHEN review_count>=6 THEN 1 ELSE 0 END),0) AS high_count "
+                        + "FROM word_learning_progress WHERE user_id=? AND card_type='EN_ZH'",
+                (rs, rowNum) -> new StudyReviewCountVO(rs.getInt("once_count"), rs.getInt("twice_count"),
+                        rs.getInt("middle_count"), rs.getInt("high_count")), userId);
     }
 
     public int countDueAttempts(long userId, Instant start, Instant end) {
