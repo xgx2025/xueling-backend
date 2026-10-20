@@ -29,6 +29,9 @@ public class WordBookDetailVO {
      * 掌握度（0-100）
      */
     private Integer mastery;
+    private Integer learnedCount;
+    private Boolean studyEnabled;
+    private String bookType;
     /**
      * 单词列表
      */

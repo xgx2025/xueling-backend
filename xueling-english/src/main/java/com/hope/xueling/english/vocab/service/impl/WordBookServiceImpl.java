@@ -16,6 +16,7 @@ import com.hope.xueling.english.vocab.domain.vo.WordVO;
 import com.hope.xueling.english.vocab.mapper.WordBookDictionaryRelationMapper;
 import com.hope.xueling.english.vocab.mapper.WordBookMapper;
 import com.hope.xueling.english.vocab.mapper.WordDictionaryMapper;
+import com.hope.xueling.english.vocab.mapper.StudyMapper;
 import com.hope.xueling.english.vocab.service.IWordBookService;
 import com.hope.xueling.english.vocab.util.WordNormalizer;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class WordBookServiceImpl implements IWordBookService {
     private final WordBookMapper wordBookMapper;
     private final WordDictionaryMapper wordDictionaryMapper;
     private final WordBookDictionaryRelationMapper wordBookDictionaryRelationMapper;
+    private final StudyMapper studyMapper;
 
     // 定义允许的颜色列表（应与前端一致，或者放在配置中心/数据库）
     private static final Set<String> ALLOWED_COLORS = Set.of(
@@ -65,6 +67,7 @@ public class WordBookServiceImpl implements IWordBookService {
         }
         WordBook wordBook = new WordBook();
         wordBook.setUserId(userId);
+        wordBook.setBookType("USER");
         wordBook.setName(createWordBookDTO.getName());
         wordBook.setColor(createWordBookDTO.getColor());
         wordBook.setIcon(createWordBookDTO.getIcon());
@@ -76,20 +79,26 @@ public class WordBookServiceImpl implements IWordBookService {
     public List<WordBookVO> getWordBooks(Long userId) {
         // 查询用户所有单词本
         QueryWrapper<WordBook> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_id", userId).eq("is_deleted", 0);
+        queryWrapper.eq("is_deleted", 0)
+                .and(q -> q.eq("user_id", userId).or().eq("book_type", "SYSTEM"))
+                .orderByAsc("book_type").orderByDesc("create_time");
         List<WordBook> wordBooks = wordBookMapper.selectList(queryWrapper);
         if (wordBooks.isEmpty()) {
             return Collections.emptyList();
         }
         // 转换为VO
-        //TODO: 计算掌握度(暂时写死)
         return wordBooks.stream().map(wordBook -> {
             WordBookVO wordBookVo = new WordBookVO();
             wordBookVo.setId(String.valueOf(wordBook.getId()));
             wordBookVo.setName(wordBook.getName());
             wordBookVo.setWordCount(wordBook.getWordCount());
-            //TODO: 计算掌握度(暂时写死)
-            wordBookVo.setMastery(45);
+            int learned = studyMapper.bookLearnedCount(userId, wordBook.getId());
+            wordBookVo.setMastery(wordBook.getWordCount() == 0 ? 0 : learned * 100 / wordBook.getWordCount());
+            wordBookVo.setLearnedCount(learned);
+            wordBookVo.setStudyEnabled(studyMapper.bookEnabled(userId, wordBook.getId()));
+            wordBookVo.setBookType(wordBook.getBookType());
+            wordBookVo.setColor(wordBook.getColor());
+            wordBookVo.setIcon(wordBook.getIcon());
             return wordBookVo;
         }).toList();
     }
@@ -97,17 +106,21 @@ public class WordBookServiceImpl implements IWordBookService {
     @Override
     public WordBookDetailVO getWordBookDetail(Long wordBookId, Long userId) {
         // 检查单词本是否存在，用户是否对单词本有读写权限
-        WordBook wordBook = checkWordBookExistsAndHasPermission(wordBookId, userId);
+        WordBook wordBook = getReadableWordBook(wordBookId, userId);
         // 构建VO
         WordBookDetailVO wordBookDetailVO = new WordBookDetailVO();
         wordBookDetailVO.setId(String.valueOf(wordBook.getId()));
         wordBookDetailVO.setName(wordBook.getName());
         wordBookDetailVO.setWordCount(wordBook.getWordCount());
-        //TODO: 计算掌握度(暂时写死)
-        wordBookDetailVO.setMastery(45);
+        int learned = studyMapper.bookLearnedCount(userId, wordBookId);
+        wordBookDetailVO.setMastery(wordBook.getWordCount() == 0 ? 0 : learned * 100 / wordBook.getWordCount());
+        wordBookDetailVO.setLearnedCount(learned);
+        wordBookDetailVO.setStudyEnabled(studyMapper.bookEnabled(userId, wordBookId));
+        wordBookDetailVO.setBookType(wordBook.getBookType());
         // 查询单词列表
         QueryWrapper<WordBookDictionaryRelation> relationQueryWrapper = new QueryWrapper<>();
-        relationQueryWrapper.eq("word_book_id", wordBookId);
+        relationQueryWrapper.eq("word_book_id", wordBookId)
+                .orderByAsc("sort_order").orderByAsc("word_id");
         List<WordBookDictionaryRelation> relations = wordBookDictionaryRelationMapper.selectList(relationQueryWrapper);
         if (relations.isEmpty()) {
             wordBookDetailVO.setWordList(Collections.emptyList());
@@ -115,10 +128,14 @@ public class WordBookServiceImpl implements IWordBookService {
             // 批量查询单词详情
             QueryWrapper<WordDictionary> wordQueryWrapper = new QueryWrapper<>();
             wordQueryWrapper.in("id", relations.stream().map(WordBookDictionaryRelation::getWordId).toList());
-            wordQueryWrapper.orderByDesc("create_time");
             List<WordDictionary> wordDictionaries = wordDictionaryMapper.selectList(wordQueryWrapper);
+            Map<Long, WordDictionary> dictionaryById = wordDictionaries.stream()
+                    .collect(java.util.stream.Collectors.toMap(WordDictionary::getId, word -> word));
             //转换为VO
-            wordBookDetailVO.setWordList(wordDictionaries.stream().map(wordDictionary -> {
+            wordBookDetailVO.setWordList(relations.stream()
+                    .map(relation -> dictionaryById.get(relation.getWordId()))
+                    .filter(Objects::nonNull)
+                    .map(wordDictionary -> {
                 WordVO wordVO = new WordVO();
                 wordVO.setId(String.valueOf(wordDictionary.getId()));
                 wordVO.setWord(wordDictionary.getWord());
@@ -225,14 +242,18 @@ public class WordBookServiceImpl implements IWordBookService {
             throw new BusinessException("单词本不存在");
         }
         // 检查用户是否对单词本有读写权限
-        if (!wordBook.getUserId().equals(userId)) {
+        if (!userId.equals(wordBook.getUserId())) {
             throw new BusinessException("用户对单词本没有读写权限");
         }
         return wordBook;
     }
-    //TODO
-    /**
-     * 计算单词本掌握度
-     */
 
+    private WordBook getReadableWordBook(Long wordBookId, Long userId) {
+        WordBook book = wordBookMapper.selectById(wordBookId);
+        if (book == null || book.getIsDeleted() != 0
+                || (!"SYSTEM".equals(book.getBookType()) && !userId.equals(book.getUserId()))) {
+            throw new BusinessException("单词本不存在或无权访问");
+        }
+        return book;
+    }
 }

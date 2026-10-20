@@ -27,6 +27,7 @@ public class WordBookDictionaryRelation {
      * 单词字典ID
      */
     private Long wordId;
+    private Integer sortOrder;
     /**
      * 创建时间
      */

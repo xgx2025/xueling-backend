@@ -25,6 +25,10 @@ public class WordBook {
      */
     private Long userId;
 
+    private String bookType;
+
+    private String systemKey;
+
     /**
      * 单词本名称
      */

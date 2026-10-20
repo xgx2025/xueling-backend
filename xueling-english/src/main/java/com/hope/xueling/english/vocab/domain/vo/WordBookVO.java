@@ -30,5 +30,8 @@ public class WordBookVO {
      * 掌握度（0-100）
      */
     private Integer mastery;
+    private Integer learnedCount;
+    private Boolean studyEnabled;
+    private String bookType;
 
 }
