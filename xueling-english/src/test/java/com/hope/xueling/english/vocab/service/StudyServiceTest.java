@@ -55,4 +55,14 @@ class StudyServiceTest {
         assertThrows(BusinessException.class, () -> service.submitReview(7L, request));
         verifyNoInteractions(scheduler);
     }
+
+    @Test
+    void recallRateHasNoValueWithoutFormalDueReviews() {
+        when(mapper.settings(7L, false)).thenReturn(new StudySettingsVO("Asia/Shanghai", 15, 0.9));
+
+        var stats = service.stats(7L);
+
+        assertEquals(0, stats.getDueRecallAttempts());
+        assertNull(stats.getDueRecallRate());
+    }
 }

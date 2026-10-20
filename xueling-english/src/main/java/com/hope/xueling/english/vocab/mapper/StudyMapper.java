@@ -56,6 +56,14 @@ public class StudyMapper {
                 + "SELECT ?, id FROM word_book WHERE system_key = 'CET4' AND is_deleted = 0", userId);
     }
 
+    public void ensureSettingsForUpdate(long userId) {
+        // 写入路径先取得独占锁，避免两个 INSERT IGNORE 的共享锁同时升级为 FOR UPDATE 时死锁。
+        jdbc.update("INSERT INTO user_study_settings (user_id) VALUES (?) "
+                + "ON DUPLICATE KEY UPDATE user_id=user_id", userId);
+        jdbc.update("INSERT IGNORE INTO user_study_book (user_id, book_id) "
+                + "SELECT ?, id FROM word_book WHERE system_key = 'CET4' AND is_deleted = 0", userId);
+    }
+
     public StudySettingsVO settings(long userId, boolean lock) {
         String sql = "SELECT time_zone, daily_new_limit, desired_retention FROM user_study_settings WHERE user_id = ?"
                 + (lock ? " FOR UPDATE" : "");
@@ -185,13 +193,23 @@ public class StudyMapper {
     public int countDueAttempts(long userId, Instant start, Instant end) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM word_review_record "
                 + "WHERE user_id=? AND reviewed_at>=? AND reviewed_at<? AND due_before IS NOT NULL "
-                + "AND due_before<=reviewed_at", Integer.class, userId, dbTime(start), dbTime(end));
+                + "AND due_before<=reviewed_at AND (SELECT previous_review.state_after "
+                + "FROM word_review_record previous_review "
+                + "WHERE previous_review.progress_id=word_review_record.progress_id "
+                + "AND previous_review.id<word_review_record.id "
+                + "ORDER BY previous_review.id DESC LIMIT 1)='REVIEW'",
+                Integer.class, userId, dbTime(start), dbTime(end));
     }
 
     public int countDueSuccesses(long userId, Instant start, Instant end) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM word_review_record "
                 + "WHERE user_id=? AND reviewed_at>=? AND reviewed_at<? AND due_before IS NOT NULL "
-                + "AND due_before<=reviewed_at AND rating>1", Integer.class,
+                + "AND due_before<=reviewed_at AND rating>1 AND (SELECT previous_review.state_after "
+                + "FROM word_review_record previous_review "
+                + "WHERE previous_review.progress_id=word_review_record.progress_id "
+                + "AND previous_review.id<word_review_record.id "
+                + "ORDER BY previous_review.id DESC LIMIT 1)='REVIEW'",
+                Integer.class,
                 userId, dbTime(start), dbTime(end));
     }
 

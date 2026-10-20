@@ -10,5 +10,6 @@ public class StudyStatsVO {
     private int todayNew;
     private int learnedWords;
     private int dueCount;
-    private double dueRecallRate;
+    private int dueRecallAttempts;
+    private Double dueRecallRate;
 }

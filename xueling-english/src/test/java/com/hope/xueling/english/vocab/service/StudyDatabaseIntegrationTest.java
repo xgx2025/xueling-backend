@@ -1,5 +1,6 @@
 package com.hope.xueling.english.vocab.service;
 
+import com.hope.xueling.common.exception.BusinessException;
 import com.hope.xueling.english.vocab.domain.dto.SubmitStudyReviewDTO;
 import com.hope.xueling.english.vocab.mapper.StudyMapper;
 import com.hope.xueling.english.vocab.service.impl.FsrsReviewScheduler;
@@ -9,9 +10,17 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.Statement;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -58,5 +67,115 @@ class StudyDatabaseIntegrationTest {
 
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user WHERE id=?",
                 Integer.class, fixtureUserId.get()));
+    }
+
+    @Test
+    void sharedWordsAreQueuedOnceAndRecallRateExcludesShortTermLearning() {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                "jdbc:mysql://127.0.0.1:3306/xueling_db?serverTimezone=Asia/Shanghai",
+                System.getenv("XUELING_DB_USERNAME"), System.getenv("XUELING_DB_PASSWORD"));
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        StudyMapper mapper = new StudyMapper(jdbc);
+        TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+
+        transaction.execute(status -> {
+            jdbc.update("INSERT INTO user (password) VALUES (?)", "study-fixture-only");
+            long userId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+            mapper.ensureSettings(userId);
+            long wordId = Long.parseLong(mapper.newCards(userId, 1).getFirst().getWordId());
+
+            jdbc.update("INSERT INTO word_book (user_id,name) VALUES (?,?)", userId, "study-fixture-book");
+            long bookId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+            jdbc.update("INSERT INTO word_book_dictionary_relation (word_book_id,word_id) VALUES (?,?)", bookId, wordId);
+            mapper.setBookEnabled(userId, bookId, true);
+            assertEquals(1, mapper.newCards(userId, 20).stream()
+                    .filter(card -> card.getWordId().equals(String.valueOf(wordId))).count());
+
+            SubmitStudyReviewDTO request = new SubmitStudyReviewDTO();
+            request.setWordId(String.valueOf(wordId));
+            request.setRating(3);
+            request.setExpectedVersion(0);
+            request.setRequestId(UUID.randomUUID().toString());
+            new StudyServiceImpl(mapper, new FsrsReviewScheduler()).submitReview(userId, request);
+            long progressId = jdbc.queryForObject("SELECT id FROM word_learning_progress WHERE user_id=? AND word_id=?",
+                    Long.class, userId, wordId);
+            Instant at = Instant.now();
+            insertFixtureReview(jdbc, progressId, userId, wordId, 3, "LEARNING", at.plusSeconds(1), false);
+            insertFixtureReview(jdbc, progressId, userId, wordId, 3, "REVIEW", at.plusSeconds(2), true);
+            insertFixtureReview(jdbc, progressId, userId, wordId, 3, "REVIEW", at.plusSeconds(3), true);
+            insertFixtureReview(jdbc, progressId, userId, wordId, 1, "RELEARNING", at.plusSeconds(4), true);
+            insertFixtureReview(jdbc, progressId, userId, wordId, 3, "REVIEW", at.plusSeconds(5), true);
+            insertFixtureReview(jdbc, progressId, userId, wordId, 2, "REVIEW", at.plusSeconds(6), true);
+
+            assertEquals(3, mapper.countDueAttempts(userId, at, at.plusSeconds(10)));
+            assertEquals(2, mapper.countDueSuccesses(userId, at, at.plusSeconds(10)));
+            status.setRollbackOnly();
+            return null;
+        });
+    }
+
+    @Test
+    void concurrentNewCardRatingsSaveOnlyOneReview() throws Exception {
+        DriverManagerDataSource dataSource = new DriverManagerDataSource(
+                "jdbc:mysql://127.0.0.1:3306/xueling_db?serverTimezone=Asia/Shanghai",
+                System.getenv("XUELING_DB_USERNAME"), System.getenv("XUELING_DB_PASSWORD"));
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        StudyMapper mapper = new StudyMapper(jdbc);
+        StudyServiceImpl service = new StudyServiceImpl(mapper, new FsrsReviewScheduler());
+        GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbc.update(connection -> {
+            var statement = connection.prepareStatement("INSERT INTO user (password) VALUES (?)",
+                    Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, "study-concurrency-fixture-only");
+            return statement;
+        }, keyHolder);
+        long userId = keyHolder.getKey().longValue();
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            mapper.ensureSettings(userId);
+            String wordId = mapper.newCards(userId, 1).getFirst().getWordId();
+            CountDownLatch start = new CountDownLatch(1);
+            var rate = (java.util.concurrent.Callable<Boolean>) () -> {
+                start.await();
+                SubmitStudyReviewDTO request = new SubmitStudyReviewDTO();
+                request.setWordId(wordId);
+                request.setRating(3);
+                request.setExpectedVersion(0);
+                request.setRequestId(UUID.randomUUID().toString());
+                try {
+                    new TransactionTemplate(new DataSourceTransactionManager(dataSource))
+                            .execute(status -> service.submitReview(userId, request));
+                    return true;
+                } catch (BusinessException staleCard) {
+                    return false;
+                }
+            };
+            var first = executor.submit(rate);
+            var second = executor.submit(rate);
+            start.countDown();
+            assertEquals(1, (first.get(10, TimeUnit.SECONDS) ? 1 : 0)
+                    + (second.get(10, TimeUnit.SECONDS) ? 1 : 0));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM word_review_record WHERE user_id=?",
+                    Integer.class, userId));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM word_learning_progress WHERE user_id=?",
+                    Integer.class, userId));
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(10, TimeUnit.SECONDS);
+            jdbc.update("DELETE FROM user WHERE id=?", userId);
+        }
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user WHERE id=?", Integer.class, userId));
+    }
+
+    private static void insertFixtureReview(JdbcTemplate jdbc, long progressId, long userId,
+                                            long wordId, int rating, String stateAfter,
+                                            Instant at, boolean due) {
+        LocalDateTime reviewedAt = LocalDateTime.ofInstant(at, ZoneOffset.UTC);
+        jdbc.update("INSERT INTO word_review_record (progress_id,user_id,word_id,card_type,rating,reviewed_at,"
+                        + "due_before,due_after,scheduler_version,desired_retention,state_after,version_after,request_id) "
+                        + "VALUES (?,?,?,'EN_ZH',?,?,?,?,?,?,?,?,?)",
+                progressId, userId, wordId, rating, reviewedAt,
+                due ? reviewedAt.minusMinutes(1) : null, reviewedAt.plusDays(1),
+                "fixture", 0.9, stateAfter, 1, UUID.randomUUID().toString());
     }
 }

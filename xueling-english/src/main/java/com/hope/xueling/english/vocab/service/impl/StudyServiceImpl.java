@@ -86,7 +86,7 @@ public class StudyServiceImpl implements IStudyService {
             throw new ValidationException("单词ID无效");
         }
 
-        studyMapper.ensureSettings(userId);
+        studyMapper.ensureSettingsForUpdate(userId);
         // 锁设置行，串行化同一用户的新词额度与评分提交。
         StudySettingsVO settings = studyMapper.settings(userId, true);
         StudyMapper.PreviousReview previous = studyMapper.reviewByRequestId(userId, request.getRequestId());
@@ -151,7 +151,8 @@ public class StudyServiceImpl implements IStudyService {
         int successes = studyMapper.countDueSuccesses(userId, day.start(), day.end());
         return new StudyStatsVO(studyMapper.countTodayReviews(userId, day.start(), day.end()),
                 studyMapper.countIntroduced(userId, day.date()), studyMapper.countLearned(userId),
-                studyMapper.countDue(userId, now), attempts == 0 ? 0 : (double) successes / attempts);
+                studyMapper.countDue(userId, now), attempts,
+                attempts == 0 ? null : (double) successes / attempts);
     }
 
     @Override
@@ -175,7 +176,7 @@ public class StudyServiceImpl implements IStudyService {
         } catch (DateTimeException e) {
             throw new ValidationException("时区无效");
         }
-        studyMapper.ensureSettings(userId);
+        studyMapper.ensureSettingsForUpdate(userId);
         StudySettingsVO settings = new StudySettingsVO(request.getTimeZone(), request.getDailyNewLimit(),
                 request.getDesiredRetention());
         studyMapper.updateSettings(userId, settings);
@@ -188,7 +189,7 @@ public class StudyServiceImpl implements IStudyService {
         if (!studyMapper.accessibleBook(userId, bookId)) {
             throw new BusinessException("词书不存在或无权访问");
         }
-        studyMapper.ensureSettings(userId);
+        studyMapper.ensureSettingsForUpdate(userId);
         studyMapper.setBookEnabled(userId, bookId, enabled);
     }
 }
