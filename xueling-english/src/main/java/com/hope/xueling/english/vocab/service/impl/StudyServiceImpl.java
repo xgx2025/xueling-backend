@@ -8,6 +8,7 @@ import com.hope.xueling.english.vocab.domain.vo.*;
 import com.hope.xueling.english.vocab.mapper.StudyMapper;
 import com.hope.xueling.english.vocab.service.IStudyService;
 import com.hope.xueling.english.vocab.service.ReviewScheduler;
+import io.github.openspacedrepetition.Card;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Comparator;
 
 @Service
 public class StudyServiceImpl implements IStudyService {
@@ -175,6 +177,7 @@ public class StudyServiceImpl implements IStudyService {
         long elapsedMs;
         int dueAttempts;
         int dueSuccesses;
+        int goodOrEasyRecalls;
     }
 
     @Override
@@ -199,6 +202,7 @@ public class StudyServiceImpl implements IStudyService {
                     && !row.dueBefore().isAfter(row.reviewedAt())) {
                 aggregate.dueAttempts++;
                 if (row.rating() > 1) aggregate.dueSuccesses++;
+                if (row.rating() >= 3) aggregate.goodOrEasyRecalls++;
             }
         }
         List<StudyDayStatsVO> result = new ArrayList<>(days);
@@ -209,6 +213,7 @@ public class StudyServiceImpl implements IStudyService {
             result.add(new StudyDayStatsVO(date, aggregate.reviews, aggregate.newWords,
                     aggregate.elapsedMs, aggregate.dueAttempts,
                     aggregate.dueAttempts == 0 ? null : (double) aggregate.dueSuccesses / aggregate.dueAttempts,
+                    aggregate.dueAttempts == 0 ? null : (double) aggregate.goodOrEasyRecalls / aggregate.dueAttempts,
                     studyMapper.dueBacklogAt(userId, cutoff)));
         }
         return result;
@@ -219,6 +224,56 @@ public class StudyServiceImpl implements IStudyService {
     public StudyReviewCountVO reviewCounts(long userId) {
         studyMapper.ensureSettings(userId);
         return studyMapper.reviewCounts(userId);
+    }
+
+    @Override
+    @Transactional
+    public StudyFamiliarityVO familiarity(long userId, Long bookId, String stage, int page) {
+        if (page < 1 || page > 100_000 || !List.of("ALL", "LEARNING", "CONSOLIDATING", "STABLE").contains(stage)) {
+            throw new ValidationException("熟悉程度筛选参数无效");
+        }
+        if (bookId != null && (bookId <= 0 || !studyMapper.accessibleBook(userId, bookId))) {
+            throw new ValidationException("词书不存在或无权访问");
+        }
+        studyMapper.ensureSettings(userId);
+        Instant current = now();
+        List<StudyFamiliarityWordVO> allWords = new ArrayList<>();
+        int learning = 0;
+        int consolidating = 0;
+        int stable = 0;
+        int due = 0;
+        for (StudyMapper.FamiliarityRow row : studyMapper.familiarityRows(userId, bookId)) {
+            Double stabilityDays = null;
+            String wordStage = "LEARNING";
+            if ("REVIEW".equals(row.state())) {
+                stabilityDays = Card.fromJson(row.cardJson()).getStability();
+                wordStage = stabilityDays != null && stabilityDays >= 30 ? "STABLE" : "CONSOLIDATING";
+            }
+            boolean isDue = !row.dueAt().isAfter(current);
+            if (isDue) due++;
+            switch (wordStage) {
+                case "LEARNING" -> learning++;
+                case "CONSOLIDATING" -> consolidating++;
+                default -> stable++;
+            }
+            allWords.add(new StudyFamiliarityWordVO(String.valueOf(row.wordId()), row.word(),
+                    row.meaning(), wordStage, isDue, row.dueAt(), row.lapseCount(),
+                    row.lastRating(), stabilityDays));
+        }
+        List<StudyFamiliarityWordVO> filtered = allWords.stream()
+                .filter(word -> "ALL".equals(stage) || stage.equals(word.stage()))
+                .toList();
+        int start = Math.min(filtered.size(), (page - 1) * PAGE_SIZE);
+        int end = Math.min(filtered.size(), start + PAGE_SIZE);
+        List<StudyFamiliarityWordVO> attention = allWords.stream()
+                .filter(word -> word.lapseCount() >= 2 || Integer.valueOf(1).equals(word.lastRating()))
+                .sorted(Comparator.comparing((StudyFamiliarityWordVO word) ->
+                                !Integer.valueOf(1).equals(word.lastRating()))
+                        .thenComparing(Comparator.comparingInt(StudyFamiliarityWordVO::lapseCount).reversed())
+                        .thenComparing(StudyFamiliarityWordVO::dueAt))
+                .limit(5).toList();
+        return new StudyFamiliarityVO(allWords.size(), learning, consolidating, stable, due,
+                filtered.size(), page, PAGE_SIZE, filtered.subList(start, end), attention);
     }
 
     @Override

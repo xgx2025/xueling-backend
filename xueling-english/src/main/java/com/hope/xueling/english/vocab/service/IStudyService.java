@@ -8,6 +8,7 @@ import com.hope.xueling.english.vocab.domain.vo.StudyStatsVO;
 import com.hope.xueling.english.vocab.domain.vo.StudyDayStatsVO;
 import com.hope.xueling.english.vocab.domain.vo.StudyReviewCountVO;
 import com.hope.xueling.english.vocab.domain.vo.TodayStudyVO;
+import com.hope.xueling.english.vocab.domain.vo.StudyFamiliarityVO;
 import java.util.List;
 
 public interface IStudyService {
@@ -16,6 +17,7 @@ public interface IStudyService {
     StudyStatsVO stats(long userId);
     List<StudyDayStatsVO> history(long userId, int days);
     StudyReviewCountVO reviewCounts(long userId);
+    StudyFamiliarityVO familiarity(long userId, Long bookId, String stage, int page);
     StudySettingsVO settings(long userId);
     StudySettingsVO updateSettings(long userId, UpdateStudySettingsDTO request);
     void setBookEnabled(long userId, long bookId, boolean enabled);

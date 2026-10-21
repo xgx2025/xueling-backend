@@ -27,6 +27,8 @@ public class StudyMapper {
     public record PreviousReview(long wordId, int rating, StudyReviewResultVO result) {}
     public record HistoryReviewRow(Instant reviewedAt, Instant dueBefore,
                                    String stateBefore, int rating, Integer elapsedMs) {}
+    public record FamiliarityRow(long wordId, String word, String meaning, String state,
+                                 String cardJson, Instant dueAt, int lapseCount, Integer lastRating) {}
 
     private static Instant utc(ResultSet rs, String column) throws SQLException {
         LocalDateTime value = rs.getObject(column, LocalDateTime.class);
@@ -222,6 +224,24 @@ public class StudyMapper {
                         + "FROM word_learning_progress WHERE user_id=? AND card_type='EN_ZH'",
                 (rs, rowNum) -> new StudyReviewCountVO(rs.getInt("once_count"), rs.getInt("twice_count"),
                         rs.getInt("middle_count"), rs.getInt("high_count")), userId);
+    }
+
+    public List<FamiliarityRow> familiarityRows(long userId, Long bookId) {
+        String sql = "SELECT p.word_id,d.word,d.meaning,p.state,p.card_json,p.due_at,p.lapse_count,"
+                + "(SELECT r.rating FROM word_review_record r WHERE r.progress_id=p.id "
+                + "ORDER BY r.id DESC LIMIT 1) AS last_rating "
+                + "FROM word_learning_progress p JOIN word_dictionary d ON d.id=p.word_id "
+                + "WHERE p.user_id=? AND p.card_type='EN_ZH'";
+        if (bookId != null) {
+            sql += " AND EXISTS (SELECT 1 FROM word_book_dictionary_relation rel "
+                    + "WHERE rel.word_id=p.word_id AND rel.word_book_id=?)";
+        }
+        sql += " ORDER BY p.due_at,p.id";
+        return jdbc.query(sql, (rs, rowNum) -> new FamiliarityRow(
+                rs.getLong("word_id"), rs.getString("word"), rs.getString("meaning"),
+                rs.getString("state"), rs.getString("card_json"), utc(rs, "due_at"),
+                rs.getInt("lapse_count"), rs.getObject("last_rating", Integer.class)),
+                bookId == null ? new Object[]{userId} : new Object[]{userId, bookId});
     }
 
     public int countDueAttempts(long userId, Instant start, Instant end) {

@@ -4,4 +4,5 @@ import java.time.LocalDate;
 
 public record StudyDayStatsVO(LocalDate date, int reviewCount, int newWords,
                               long studyTimeMs, int dueRecallAttempts,
-                              Double dueRecallRate, int dueBacklog) {}
+                              Double dueRecallRate, Double goodOrEasyRate,
+                              int dueBacklog) {}

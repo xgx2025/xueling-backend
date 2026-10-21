@@ -8,6 +8,8 @@ import com.hope.xueling.english.vocab.domain.vo.StudySettingsVO;
 import com.hope.xueling.english.vocab.mapper.StudyMapper;
 import com.hope.xueling.english.vocab.service.impl.FsrsReviewScheduler;
 import com.hope.xueling.english.vocab.service.impl.StudyServiceImpl;
+import io.github.openspacedrepetition.Card;
+import io.github.openspacedrepetition.State;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -37,6 +39,8 @@ class StudyServiceTest {
         Instant dayEnd;
         boolean progressQueried;
         List<HistoryReviewRow> historyRows = List.of();
+        List<FamiliarityRow> familiarityRows = List.of();
+        Long selectedBookId;
 
         FakeStudyMapper() { super(null); }
         @Override public void ensureSettings(long userId) {}
@@ -66,6 +70,11 @@ class StudyServiceTest {
             return historyRows;
         }
         @Override public int dueBacklogAt(long userId, Instant cutoff) { return 0; }
+        @Override public boolean accessibleBook(long userId, long bookId) { return bookId == 12L; }
+        @Override public List<FamiliarityRow> familiarityRows(long userId, Long bookId) {
+            selectedBookId = bookId;
+            return familiarityRows;
+        }
         @Override public List<StudyQueueCardVO> dueCards(long userId, Instant now, int limit) {
             dueQueries++;
             return List.of();
@@ -156,7 +165,11 @@ class StudyServiceTest {
                 new StudyMapper.HistoryReviewRow(instant.minusSeconds(1800),
                         instant.minusSeconds(1900), "LEARNING", 3, 3000),
                 new StudyMapper.HistoryReviewRow(instant.minusSeconds(900),
-                        null, null, 3, 1000));
+                        null, null, 3, 1000),
+                new StudyMapper.HistoryReviewRow(instant.minusSeconds(600),
+                        instant.minusSeconds(700), "REVIEW", 2, 1000),
+                new StudyMapper.HistoryReviewRow(instant.minusSeconds(300),
+                        instant.minusSeconds(400), "REVIEW", 3, 1000));
         StudyServiceImpl fixedService = new StudyServiceImpl(mapper, new FsrsReviewScheduler(),
                 Clock.fixed(instant, ZoneOffset.UTC));
 
@@ -165,10 +178,39 @@ class StudyServiceTest {
 
         assertEquals(7, history.size());
         assertEquals(LocalDate.of(2026, 10, 20), today.date());
-        assertEquals(3, today.reviewCount());
+        assertEquals(5, today.reviewCount());
         assertEquals(1, today.newWords());
-        assertEquals(6000, today.studyTimeMs());
-        assertEquals(1, today.dueRecallAttempts());
-        assertEquals(0.0, today.dueRecallRate());
+        assertEquals(8000, today.studyTimeMs());
+        assertEquals(3, today.dueRecallAttempts());
+        assertEquals(2.0 / 3.0, today.dueRecallRate());
+        assertEquals(1.0 / 3.0, today.goodOrEasyRate());
+    }
+
+    @Test
+    void familiaritySeparatesMemoryStageFromDueStatusAndFiltersBook() {
+        Instant instant = Instant.parse("2026-10-20T12:00:00Z");
+        String learning = Card.builder().state(State.LEARNING).due(instant.plusSeconds(600)).build().toJson();
+        String consolidating = Card.builder().state(State.REVIEW).stability(7.0)
+                .due(instant.minusSeconds(60)).build().toJson();
+        String stable = Card.builder().state(State.REVIEW).stability(45.0)
+                .due(instant.minusSeconds(60)).build().toJson();
+        mapper.familiarityRows = List.of(
+                new StudyMapper.FamiliarityRow(1, "one", "一", "LEARNING", learning, instant.plusSeconds(600), 0, 3),
+                new StudyMapper.FamiliarityRow(2, "two", "二", "REVIEW", consolidating, instant.minusSeconds(60), 2, 1),
+                new StudyMapper.FamiliarityRow(3, "three", "三", "REVIEW", stable, instant.minusSeconds(60), 0, 4));
+        var fixedService = new StudyServiceImpl(mapper, new FsrsReviewScheduler(),
+                Clock.fixed(instant, ZoneOffset.UTC));
+
+        var result = fixedService.familiarity(USER_ID, 12L, "STABLE", 1);
+        assertEquals(12L, mapper.selectedBookId);
+        assertEquals(3, result.learnedCount());
+        assertEquals(1, result.learningCount());
+        assertEquals(1, result.consolidatingCount());
+        assertEquals(1, result.stableCount());
+        assertEquals(2, result.dueCount());
+        assertEquals("three", result.words().getFirst().word());
+        assertEquals("two", result.attentionWords().getFirst().word());
+        assertThrows(com.hope.xueling.common.exception.ValidationException.class,
+                () -> fixedService.familiarity(USER_ID, 99L, "ALL", 1));
     }
 }

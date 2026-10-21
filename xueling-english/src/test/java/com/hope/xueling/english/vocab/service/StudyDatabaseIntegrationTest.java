@@ -70,6 +70,10 @@ class StudyDatabaseIntegrationTest {
             assertEquals(1, history.reviewCount());
             assertEquals(1, history.newWords());
             assertEquals(1, service.reviewCounts(userId).once());
+            var familiarity = service.familiarity(userId, null, "ALL", 1);
+            assertEquals(1, familiarity.learnedCount());
+            assertEquals(1, familiarity.wordCount());
+            assertEquals(card.getWordId(), familiarity.words().getFirst().wordId());
             status.setRollbackOnly();
             return null;
         });

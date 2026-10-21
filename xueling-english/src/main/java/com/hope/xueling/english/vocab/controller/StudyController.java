@@ -49,6 +49,13 @@ public class StudyController {
         return Result.success(studyService.reviewCounts(userId()));
     }
 
+    @GetMapping("/familiarity")
+    public Result<StudyFamiliarityVO> familiarity(@RequestParam(required = false) Long bookId,
+                                                  @RequestParam(defaultValue = "ALL") String stage,
+                                                  @RequestParam(defaultValue = "1") int page) {
+        return Result.success(studyService.familiarity(userId(), bookId, stage, page));
+    }
+
     @GetMapping("/settings")
     public Result<StudySettingsVO> settings() {
         return Result.success(studyService.settings(userId()));
