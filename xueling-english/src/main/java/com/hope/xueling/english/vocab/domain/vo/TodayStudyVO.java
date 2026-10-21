@@ -11,6 +11,7 @@ public class TodayStudyVO {
     private int newRemaining;
     private int todayReviewed;
     private int todayNew;
+    private boolean checkedIn;
     private Instant nextDueAt;
     private List<StudyQueueCardVO> cards;
 }

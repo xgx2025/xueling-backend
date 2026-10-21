@@ -44,6 +44,11 @@ public class StudyController {
         return Result.success(studyService.history(userId(), days));
     }
 
+    @GetMapping("/calendar")
+    public Result<StudyCalendarVO> calendar(@RequestParam(required = false) String month) {
+        return Result.success(studyService.calendar(userId(), month));
+    }
+
     @GetMapping("/review-counts")
     public Result<StudyReviewCountVO> reviewCounts() {
         return Result.success(studyService.reviewCounts(userId()));

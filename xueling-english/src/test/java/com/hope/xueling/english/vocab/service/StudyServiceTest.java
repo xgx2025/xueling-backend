@@ -38,6 +38,10 @@ class StudyServiceTest {
         Instant dayStart;
         Instant dayEnd;
         boolean progressQueried;
+        ProgressRow savedProgress;
+        int insertedCheckIns;
+        boolean moreNewCards;
+        List<LocalDate> checkedDates = List.of();
         List<HistoryReviewRow> historyRows = List.of();
         List<FamiliarityRow> familiarityRows = List.of();
         Long selectedBookId;
@@ -45,11 +49,27 @@ class StudyServiceTest {
         FakeStudyMapper() { super(null); }
         @Override public void ensureSettings(long userId) {}
         @Override public void ensureSettingsForUpdate(long userId) {}
+        @Override public boolean hasCheckIn(long userId, LocalDate date) { return checkedDates.contains(date); }
+        @Override public List<LocalDate> checkInDates(long userId) { return checkedDates; }
         @Override public StudySettingsVO settings(long userId, boolean lock) { return settings; }
         @Override public PreviousReview reviewByRequestId(long userId, String requestId) { return previous; }
         @Override public ProgressRow progressForUpdate(long userId, long wordId) {
             progressQueried = true;
-            return null;
+            return savedProgress;
+        }
+        @Override public void insertProgress(long userId, long wordId, String cardJson, String state,
+                                             Instant dueAt, Instant reviewedAt, LocalDate date,
+                                             String schedulerVersion, int lapseCount) {
+            savedProgress = new ProgressRow(1L, cardJson, state, dueAt, 1, 1, lapseCount);
+            introduced++;
+        }
+        @Override public void insertReview(long progressId, long userId, long wordId, int rating,
+                                           Instant reviewedAt, Instant dueBefore, Instant dueAfter,
+                                           Integer elapsedMs, String schedulerVersion, double retention,
+                                           String stateAfter, int versionAfter, String requestId) {}
+        @Override public void insertCheckIn(long userId, LocalDate date, Instant checkedInAt) {
+            insertedCheckIns++;
+            checkedDates = List.of(date);
         }
         @Override public boolean eligibleNewWord(long userId, long wordId) { return eligible; }
         @Override public int countDue(long userId, Instant now) { return dueCount; }
@@ -81,7 +101,7 @@ class StudyServiceTest {
         }
         @Override public List<StudyQueueCardVO> newCards(long userId, int limit) {
             newQueries++;
-            return List.of();
+            return moreNewCards ? List.of(new StudyQueueCardVO()) : List.of();
         }
     }
 
@@ -154,6 +174,51 @@ class StudyServiceTest {
         assertEquals(0, before.getNewRemaining());
         assertEquals(15, after.getNewRemaining());
         assertEquals(1, mapper.newQueries);
+    }
+
+    @Test
+    void lastSavedRatingAutomaticallyChecksInUsingUsersStudyDate() {
+        Instant instant = Instant.parse("2026-10-20T16:30:00Z");
+        mapper.settings = new StudySettingsVO("Asia/Shanghai", 1, 0.9);
+        var fixedService = new StudyServiceImpl(mapper, new FsrsReviewScheduler(),
+                Clock.fixed(instant, ZoneOffset.UTC));
+
+        fixedService.submitReview(USER_ID, review());
+
+        assertEquals(1, mapper.insertedCheckIns);
+        assertEquals(List.of(LocalDate.of(2026, 10, 21)), mapper.checkedDates);
+        assertTrue(fixedService.today(USER_ID).isCheckedIn());
+    }
+
+    @Test
+    void aRatingDoesNotCheckInWhileAnotherNewCardIsAvailable() {
+        mapper.settings = new StudySettingsVO("Asia/Shanghai", 2, 0.9);
+        mapper.moreNewCards = true;
+
+        service.submitReview(USER_ID, review());
+
+        assertEquals(0, mapper.insertedCheckIns);
+    }
+
+    @Test
+    void calendarReportsStreakAcrossMonthBoundaryAndKeepsLearningSeparate() {
+        Instant instant = Instant.parse("2026-10-20T12:00:00Z");
+        mapper.checkedDates = List.of(LocalDate.of(2026, 9, 30), LocalDate.of(2026, 10, 1),
+                LocalDate.of(2026, 10, 18), LocalDate.of(2026, 10, 19));
+        mapper.historyRows = List.of(new StudyMapper.HistoryReviewRow(instant.minusSeconds(600),
+                null, null, 3, 1200));
+        var fixedService = new StudyServiceImpl(mapper, new FsrsReviewScheduler(),
+                Clock.fixed(instant, ZoneOffset.UTC));
+
+        var calendar = fixedService.calendar(USER_ID, "2026-10");
+
+        assertEquals(2, calendar.currentStreak());
+        assertEquals(2, calendar.longestStreak());
+        assertEquals(4, calendar.totalCheckIns());
+        assertFalse(calendar.checkedInToday());
+        assertEquals(1, calendar.days().get(19).reviewCount());
+        assertFalse(calendar.days().get(19).checkedIn());
+        assertTrue(calendar.days().get(18).checkedIn());
     }
 
     @Test

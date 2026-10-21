@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.*;
 import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,6 +73,7 @@ public class StudyServiceImpl implements IStudyService {
         today.setNewRemaining(remaining);
         today.setTodayNew(introduced);
         today.setTodayReviewed(studyMapper.countTodayReviews(userId, day.start(), day.end()));
+        today.setCheckedIn(studyMapper.hasCheckIn(userId, day.date()));
         today.setNextDueAt(studyMapper.nextDue(userId, now));
         today.setCards(cards);
         return today;
@@ -153,7 +155,64 @@ public class StudyServiceImpl implements IStudyService {
                 version == 0 ? null : progress.dueAt(), scheduled.dueAt(), request.getElapsedMs(),
                 reviewScheduler.version(), settings.getDesiredRetention(), scheduled.state(),
                 versionAfter, request.getRequestId());
+        // Only a saved rating can complete a day. The unique date key makes retries harmless.
+        if (studyMapper.countDue(userId, reviewedAt) == 0) {
+            int introducedToday = studyMapper.countIntroduced(userId, day.date());
+            int remaining = Math.max(0, settings.getDailyNewLimit() - introducedToday);
+            if (remaining == 0 || studyMapper.newCards(userId, 1).isEmpty()) {
+                studyMapper.insertCheckIn(userId, day.date(), reviewedAt);
+            }
+        }
         return new StudyReviewResultVO(String.valueOf(wordId), scheduled.state(), scheduled.dueAt(), versionAfter);
+    }
+
+    @Override
+    @Transactional
+    public StudyCalendarVO calendar(long userId, String month) {
+        studyMapper.ensureSettings(userId);
+        ZoneId zone = ZoneId.of(studyMapper.settings(userId, false).getTimeZone());
+        LocalDate today = now().atZone(zone).toLocalDate();
+        YearMonth selected;
+        try {
+            selected = month == null ? YearMonth.from(today) : YearMonth.parse(month);
+        } catch (DateTimeParseException | NullPointerException exception) {
+            throw new ValidationException("月份格式应为 YYYY-MM");
+        }
+        if (selected.isAfter(YearMonth.from(today)) || selected.isBefore(YearMonth.from(today).minusYears(10))) {
+            throw new ValidationException("月份超出可查看范围");
+        }
+        LocalDate first = selected.atDay(1);
+        LocalDate after = selected.plusMonths(1).atDay(1);
+        Map<LocalDate, DayAggregate> aggregates = new HashMap<>();
+        for (StudyMapper.HistoryReviewRow row : studyMapper.historyReviews(userId,
+                first.atStartOfDay(zone).toInstant(), after.atStartOfDay(zone).toInstant())) {
+            LocalDate date = row.reviewedAt().atZone(zone).toLocalDate();
+            DayAggregate aggregate = aggregates.computeIfAbsent(date, ignored -> new DayAggregate());
+            aggregate.reviews++;
+            if (row.dueBefore() == null) aggregate.newWords++;
+            aggregate.elapsedMs += row.elapsedMs() == null ? 0 : row.elapsedMs();
+        }
+        List<LocalDate> checkedDates = studyMapper.checkInDates(userId);
+        var checked = new java.util.HashSet<>(checkedDates);
+        int longest = 0;
+        int run = 0;
+        LocalDate previous = null;
+        for (LocalDate date : checkedDates) {
+            run = previous != null && previous.plusDays(1).equals(date) ? run + 1 : 1;
+            longest = Math.max(longest, run);
+            previous = date;
+        }
+        LocalDate streakEnd = checked.contains(today) ? today : today.minusDays(1);
+        int current = 0;
+        while (checked.contains(streakEnd.minusDays(current))) current++;
+        List<StudyCalendarDayVO> days = new ArrayList<>();
+        for (LocalDate date = first; date.isBefore(after); date = date.plusDays(1)) {
+            DayAggregate aggregate = aggregates.getOrDefault(date, new DayAggregate());
+            days.add(new StudyCalendarDayVO(date, checked.contains(date), aggregate.reviews,
+                    aggregate.newWords, aggregate.elapsedMs));
+        }
+        return new StudyCalendarVO(selected.toString(), today, checked.contains(today), current,
+                longest, checkedDates.size(), days);
     }
 
     @Override

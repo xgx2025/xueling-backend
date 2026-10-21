@@ -129,6 +129,22 @@ public class StudyMapper {
                 userId, dbTime(start), dbTime(end));
     }
 
+    public void insertCheckIn(long userId, LocalDate date, Instant checkedInAt) {
+        jdbc.update("INSERT IGNORE INTO study_check_in (user_id,study_date,checked_in_at) VALUES (?,?,?)",
+                userId, date, dbTime(checkedInAt));
+    }
+
+    public boolean hasCheckIn(long userId, LocalDate date) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM study_check_in WHERE user_id=? AND study_date=?",
+                Integer.class, userId, date);
+        return count != null && count > 0;
+    }
+
+    public List<LocalDate> checkInDates(long userId) {
+        return jdbc.query("SELECT study_date FROM study_check_in WHERE user_id=? ORDER BY study_date",
+                (rs, rowNum) -> rs.getObject("study_date", LocalDate.class), userId);
+    }
+
     public List<HistoryReviewRow> historyReviews(long userId, Instant start, Instant end) {
         return jdbc.query("SELECT r.reviewed_at,r.due_before,r.rating,r.elapsed_ms,"
                         + "(SELECT previous_review.state_after FROM word_review_record previous_review "

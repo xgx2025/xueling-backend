@@ -9,6 +9,7 @@ import com.hope.xueling.english.vocab.domain.vo.StudyDayStatsVO;
 import com.hope.xueling.english.vocab.domain.vo.StudyReviewCountVO;
 import com.hope.xueling.english.vocab.domain.vo.TodayStudyVO;
 import com.hope.xueling.english.vocab.domain.vo.StudyFamiliarityVO;
+import com.hope.xueling.english.vocab.domain.vo.StudyCalendarVO;
 import java.util.List;
 
 public interface IStudyService {
@@ -16,6 +17,7 @@ public interface IStudyService {
     StudyReviewResultVO submitReview(long userId, SubmitStudyReviewDTO request);
     StudyStatsVO stats(long userId);
     List<StudyDayStatsVO> history(long userId, int days);
+    StudyCalendarVO calendar(long userId, String month);
     StudyReviewCountVO reviewCounts(long userId);
     StudyFamiliarityVO familiarity(long userId, Long bookId, String stage, int page);
     StudySettingsVO settings(long userId);
