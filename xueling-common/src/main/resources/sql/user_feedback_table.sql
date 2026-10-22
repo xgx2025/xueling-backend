@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `user_feedback` (
+  `id` bigint unsigned NOT NULL COMMENT '反馈ID',
+  `user_id` bigint unsigned NOT NULL COMMENT '提交用户ID',
+  `request_id` varchar(64) NOT NULL COMMENT '客户端提交请求ID',
+  `category` varchar(32) NOT NULL COMMENT '反馈分类',
+  `subcategory` varchar(32) DEFAULT NULL COMMENT '细分类别',
+  `content` varchar(2000) NOT NULL COMMENT '反馈内容',
+  `source_page` varchar(255) DEFAULT NULL COMMENT '来源页面路径',
+  `context_word` varchar(100) DEFAULT NULL COMMENT '关联单词',
+  `contact` varchar(100) DEFAULT NULL COMMENT '可选联系方式',
+  `status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT '处理状态',
+  `admin_reply` varchar(2000) DEFAULT NULL COMMENT '处理回复',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `replied_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_request` (`user_id`, `request_id`),
+  KEY `idx_user_created` (`user_id`, `create_time`),
+  KEY `idx_status_created` (`status`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户反馈';

@@ -119,6 +119,11 @@ spring:
 server:
   port: 9012
 
+# 可处理反馈的用户 ID，多个 ID 用英文逗号分隔；默认无管理员。
+xueling:
+  feedback:
+    admin-user-ids: ${XUELING_FEEDBACK_ADMIN_IDS:}
+
 #阿里云OSS配置
 aliyun:
   oss:

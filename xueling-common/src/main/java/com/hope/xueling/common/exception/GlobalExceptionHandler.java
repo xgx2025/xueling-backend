@@ -2,6 +2,8 @@ package com.hope.xueling.common.exception;
 
 import com.hope.xueling.common.domain.vo.Result;
 import com.hope.xueling.common.constant.ResultCode;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,6 +19,10 @@ import java.util.regex.Pattern;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Result<String>> handleForbiddenException(ForbiddenException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Result.fail(ResultCode.FORBIDDEN, e.getMessage()));
+    }
 
     /**
      * 处理数据库唯一冲突异常
