@@ -32,10 +32,7 @@ spring:
       max-active: 20
       # 监控页面配置（核心）
       stat-view-servlet:
-        enabled: true
-        url-pattern: /druid/*
-        login-username: xgx
-        login-password: xgx123
+        enabled: false # 生产环境不对外提供 Druid 管理页面
         reset-enable: false
       # web统计过滤器
       web-stat-filter:
@@ -119,10 +116,12 @@ spring:
 server:
   port: 9012
 
-# 可处理反馈的用户 ID，多个 ID 用英文逗号分隔；默认无管理员。
+# 管理员用户 ID，多个 ID 用英文逗号分隔；默认无管理员。
 xueling:
-  feedback:
-    admin-user-ids: ${XUELING_FEEDBACK_ADMIN_IDS:}
+  admin:
+    user-ids: ${XUELING_ADMIN_IDS:}
+  security:
+    secure-cookies: true # 本地 HTTP 开发时可在未跟踪的 application.yml 中设为 false
 
 #阿里云OSS配置
 aliyun:

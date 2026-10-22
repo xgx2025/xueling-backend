@@ -21,7 +21,8 @@ public interface UserMapper extends BaseMapper<User> {
      * @param userId 用户ID
      * @return true-会员，false-非会员
      */
-    @Select("select id from user where id = #{userId} and vip_level > 0")
+    @Select("select id from user where id = #{userId} and vip_level > 0 " +
+            "and vip_start_at <= CURRENT_TIMESTAMP and vip_expire_at > CURRENT_TIMESTAMP")
     Long isVip(Long userId);
 
 

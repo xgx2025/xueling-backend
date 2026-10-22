@@ -6,10 +6,10 @@ import com.hope.xueling.common.exception.BusinessException;
 import com.hope.xueling.common.exception.ForbiddenException;
 import com.hope.xueling.common.exception.ValidationException;
 import com.hope.xueling.common.mapper.FeedbackMapper;
+import com.hope.xueling.common.security.AdminAccessPolicy;
 import com.hope.xueling.common.service.impl.FeedbackServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Proxy;
 import java.util.UUID;
@@ -25,8 +25,7 @@ class FeedbackServiceImplTest {
         fake = new FakeMapper();
         FeedbackMapper mapper = (FeedbackMapper) Proxy.newProxyInstance(
                 FeedbackMapper.class.getClassLoader(), new Class<?>[]{FeedbackMapper.class}, fake);
-        service = new FeedbackServiceImpl(mapper);
-        ReflectionTestUtils.setField(service, "adminUserIds", "42, 84");
+        service = new FeedbackServiceImpl(mapper, new AdminAccessPolicy("42, 84"));
     }
 
     @Test

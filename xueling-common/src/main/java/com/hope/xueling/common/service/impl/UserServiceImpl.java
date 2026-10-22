@@ -122,6 +122,8 @@ public class UserServiceImpl implements IUserService {
             BeanUtils.copyProperties(user, userVO);
             // 实体 id 是 Long、VO id 是 String，类型不一致时 BeanUtils 会静默跳过，必须显式转换
             userVO.setId(String.valueOf(user.getId()));
+            // 对外展示的会员等级与服务端权限判断保持一致，过期或日期缺失均视为普通用户。
+            if (userMapper.isVip(id) == null) userVO.setVipLevel(0);
             return userVO;
         }
         //用户不存在异常

@@ -46,7 +46,7 @@
 
 ### 安全与认证
 - **Spring Security** - 安全框架
-- **JWT (JJWT 0.9.1)** - Token 认证
+- **JWT (JJWT 0.12.3)** - Token 认证
 
 ### 工具与服务
 - **Hutool 5.8.40** - Java 工具库
@@ -85,6 +85,19 @@ cp xueling-english/src/main/resources/application.yml.example xueling-english/sr
 ```
 
 Windows PowerShell 可使用 `Copy-Item` 执行同样的复制操作。首次运行还需配置模板中引用的 API 密钥等环境变量。
+
+认证服务还必须提供两个互不相同的 JWT 签名密钥：`XUELING_JWT_ACCESS_SECRET_BASE64` 和
+`XUELING_JWT_REFRESH_SECRET_BASE64`。每个值是至少 32 个随机字节的 Base64 编码；缺失、过短或相同会使应用启动失败。
+可在 PowerShell 中分别运行两次以下命令生成，生成结果只放入本地环境或部署平台的密钥管理中：
+
+```powershell
+[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
+
+管理接口默认无人可访问。需要管理员时，在部署环境设置 `XUELING_ADMIN_IDS`，值为逗号分隔的现有用户 ID。
+刷新令牌 Cookie 默认带 `Secure`，线上必须使用 HTTPS；仅本地 HTTP 开发可在被 Git 忽略的
+`application.yml` 中设置 `xueling.security.secure-cookies: false`。Druid 页面在配置模板中默认关闭。
+旧版写在源码中的 JWT 密钥已经公开，部署前必须更换；若历史提交中有真实的数据库或服务商凭据，也应到对应服务商处撤销并重发。
 
 4. **构建项目**
 ```bash

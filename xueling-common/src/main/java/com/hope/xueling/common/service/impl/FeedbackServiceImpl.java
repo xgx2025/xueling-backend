@@ -9,14 +9,13 @@ import com.hope.xueling.common.exception.BusinessException;
 import com.hope.xueling.common.exception.ForbiddenException;
 import com.hope.xueling.common.exception.ValidationException;
 import com.hope.xueling.common.mapper.FeedbackMapper;
+import com.hope.xueling.common.security.AdminAccessPolicy;
 import com.hope.xueling.common.service.IFeedbackService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -29,9 +28,7 @@ public class FeedbackServiceImpl implements IFeedbackService {
     private static final Set<String> TRANSLATION_TYPES = Set.of("meaning", "sound", "example", "other");
 
     private final FeedbackMapper feedbackMapper;
-
-    @Value("${xueling.feedback.admin-user-ids:${XUELING_FEEDBACK_ADMIN_IDS:}}")
-    private String adminUserIds;
+    private final AdminAccessPolicy adminAccessPolicy;
 
     @Override
     public FeedbackVO create(long userId, CreateFeedbackDTO request) {
@@ -95,8 +92,7 @@ public class FeedbackServiceImpl implements IFeedbackService {
 
     @Override
     public boolean isAdmin(long userId) {
-        if (adminUserIds == null || adminUserIds.isBlank()) return false;
-        return Arrays.stream(adminUserIds.split(",")).map(String::trim).anyMatch(String.valueOf(userId)::equals);
+        return adminAccessPolicy.isAdmin(userId);
     }
 
     @Override

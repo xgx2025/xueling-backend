@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,20 @@ public class AuthController {
 
     private final IAuthService authService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final JwtTokenUtils jwtTokenUtils;
+
+    @Value("${xueling.security.secure-cookies:true}")
+    private boolean secureCookies;
+
+    private ResponseCookie refreshCookie(String value, long maxAgeSeconds) {
+        return ResponseCookie.from("refreshToken", value)
+                .httpOnly(true)
+                .secure(secureCookies)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(maxAgeSeconds)
+                .build();
+    }
 
     /**
      * 用户注册
@@ -55,15 +70,11 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<Result<String>> login(@RequestBody LoginDTO loginDTO, HttpServletRequest request, HttpServletResponse response) {
-        log.info("IP: {} 正在尝试登录, Email: {}, Phone: {}", request.getRemoteAddr(), loginDTO.getEmail(), loginDTO.getPhone());
+        log.info("登录尝试，IP: {}", request.getRemoteAddr());
         loginDTO.setIp(request.getRemoteAddr());
         Map<String,String> tokens = authService.login(loginDTO);
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken",tokens.get("refreshToken"))
-                .httpOnly(true)     //防止XSS攻击
-                .path("/")
-                .maxAge(JwtTokenUtils.REFRESH_TOKEN_EXPIRE / 1000)
-                .build();
-        response.addHeader("Set-Cookie", refreshCookie.toString());
+        response.addHeader("Set-Cookie", refreshCookie(tokens.get("refreshToken"),
+                JwtTokenUtils.REFRESH_TOKEN_EXPIRE / 1000).toString());
 
         return ResponseEntity.ok(Result.success(tokens.get("accessToken"), "登录成功"));
     }
@@ -75,7 +86,7 @@ public class AuthController {
      */
     @GetMapping("/sendVerificationCode/email")
     public Result<String> sendVerificationCode(@RequestParam String email, HttpServletRequest request) {
-        log.info("IP: {} 正在尝试发送邮箱验证码, Email: {}", request.getRemoteAddr(), email);
+        log.info("邮箱验证码发送尝试，IP: {}", request.getRemoteAddr());
         authService.sendEmailVerificationCode(email, request.getRemoteAddr());
         return Result.success(null, "验证码已发送");
     }
@@ -87,10 +98,11 @@ public class AuthController {
      * @return 登出结果
      */
     @PostMapping("/logout")
-    public Result<String> logout() {
+    public Result<String> logout(HttpServletResponse response) {
         Claims claims = ThreadLocalUtils.get();
         Long userId = claims.get("userId", Long.class);
         authService.logout(userId.toString());
+        response.addHeader("Set-Cookie", refreshCookie("", 0).toString());
         return Result.success(null, "已成功退出登录");
     }
 
@@ -104,11 +116,10 @@ public class AuthController {
     /**
      * 刷新访问令牌
      * @param request HttpServletRequest对象
-     * @param response HttpServletResponse对象
-     * @return 刷新成功后返回新的访问令牌（data中）和刷新令牌（Set-Cookie中）
+     * @return 刷新成功后返回新的访问令牌（data中）
      */
     @PostMapping("/refreshToken")
-    public ResponseEntity<Result<String>> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<Result<String>> refreshToken(HttpServletRequest request) {
         //从请求的HttpOnlyCookie中获取刷新令牌
         Cookie refreshCookie = WebUtils.getCookie(request, "refreshToken");
         if (refreshCookie == null){
@@ -117,7 +128,7 @@ public class AuthController {
         }
         String refreshToken = refreshCookie.getValue();
         try {
-            Claims claims = JwtTokenUtils.getClaimsFromToken(refreshToken, JwtTokenUtils.REFRESH_TOKEN_SECRET);
+            Claims claims = jwtTokenUtils.parseRefreshToken(refreshToken);
             log.info("刷新令牌，userId: {}", claims.get("userId", Long.class));
             Long userId = claims.get("userId", Long.class);
 
@@ -132,19 +143,8 @@ public class AuthController {
 
             Map<String,Object> map = new HashMap<>();
             map.put("userId",userId);
-            String newAccessToken = JwtTokenUtils.generateAccessToken(map);
-            String newRefreshToken = JwtTokenUtils.generateRefreshToken(map);
-
-            // 将新的 refreshToken 存入 Redis
-            stringRedisTemplate.opsForValue().set(redisKey, newRefreshToken, JwtTokenUtils.REFRESH_TOKEN_EXPIRE, java.util.concurrent.TimeUnit.MILLISECONDS);
-
-            //设置新的刷新令牌到HttpOnlyCookie中
-            ResponseCookie newRefreshCookie = ResponseCookie.from("refreshToken",newRefreshToken)
-                    .httpOnly(true)
-                    .path("/")
-                    .maxAge(JwtTokenUtils.REFRESH_TOKEN_EXPIRE / 1000)
-                    .build();
-            response.addHeader("Set-Cookie", newRefreshCookie.toString());
+            String newAccessToken = jwtTokenUtils.generateAccessToken(map);
+            // 刷新令牌在其固定的七天有效期内保持稳定，避免多个标签页并发刷新互相踢出。
             return ResponseEntity.ok(Result.success(newAccessToken));
         } catch (Exception e) {
             log.error("刷新令牌失败: {}", e.getMessage());

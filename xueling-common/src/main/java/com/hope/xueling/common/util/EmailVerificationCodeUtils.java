@@ -5,8 +5,8 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import com.hope.xueling.common.exception.BusinessException;
 import com.hope.xueling.common.exception.SystemException;
+import com.hope.xueling.common.exception.ValidationException;
 import lombok.extern.slf4j.Slf4j;
-import net.sf.jsqlparser.util.validation.ValidationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -15,8 +15,8 @@ import javax.mail.MessagingException;
 import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 import java.io.UnsupportedEncodingException;
+import java.security.SecureRandom;
 import java.util.Properties;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -30,6 +30,9 @@ public class EmailVerificationCodeUtils {
      * Redis存储前缀
      */
     private static final String REDIS_KEY_PREFIX = "email:code:";
+    private static final String ATTEMPTS_KEY_PREFIX = "email:code:attempts:";
+    private static final int MAX_VERIFY_ATTEMPTS = 5;
+    private static final SecureRandom RANDOM = new SecureRandom();
     /**
      * 验证码有效期（分钟）
      */
@@ -109,7 +112,7 @@ public class EmailVerificationCodeUtils {
         try {
             sendEmail(email, code);
         }catch (MessagingException | UnsupportedEncodingException e){
-            log.error("系统异常：发送邮箱验证码失败, 用户邮箱: {}, 原因: {}", email, e.getMessage(), e);
+            log.error("系统异常：发送邮箱验证码失败", e);
             stringRedisTemplate.delete(redisKey);
             throw new SystemException("系统繁忙，验证码发送失败，请稍后重试");
         }
@@ -122,15 +125,25 @@ public class EmailVerificationCodeUtils {
      */
     public void verifyCode(String email, String code) {
         String redisKey = REDIS_KEY_PREFIX + email;
+        String attemptsKey = ATTEMPTS_KEY_PREFIX + email;
+        String previousAttempts = stringRedisTemplate.opsForValue().get(attemptsKey);
+        if (previousAttempts != null && Integer.parseInt(previousAttempts) >= MAX_VERIFY_ATTEMPTS) {
+            throw new ValidationException("验证码错误或已过期");
+        }
         String storedCode = (String) stringRedisTemplate.opsForHash().get(redisKey, "code");
 
         // 验证码不存在或不匹配
         if (storedCode == null || !storedCode.equals(code)) {
+            Long attempts = stringRedisTemplate.opsForValue().increment(attemptsKey);
+            if (attempts != null && attempts == 1) {
+                stringRedisTemplate.expire(attemptsKey, CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            }
             throw new ValidationException("验证码错误或已过期");
         }
 
         // 验证成功后移除验证码，防止重复使用
         removeCode(email);
+        stringRedisTemplate.delete(attemptsKey);
     }
 
     /**
@@ -146,10 +159,9 @@ public class EmailVerificationCodeUtils {
      * @return 数字验证码
      */
     private String generateRandomCode() {
-        Random rand = new Random();
         StringBuilder code = new StringBuilder();
         for (int i = 0; i < CODE_LENGTH; i++) {
-            code.append(rand.nextInt(10));
+            code.append(RANDOM.nextInt(10));
         }
         return code.toString();
     }

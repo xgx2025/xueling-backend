@@ -42,7 +42,7 @@
         <mybatis-plus-join.version>1.5.4</mybatis-plus-join.version>
         <druid.version>1.2.21</druid.version>
         <commons-email.version>1.5</commons-email.version>
-        <jjwt.version>0.9.1</jjwt.version>
+        <jjwt.version>0.12.3</jjwt.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <ali-oss.version>3.17.4</ali-oss.version>
     </properties>
@@ -90,8 +90,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt</artifactId>
-            <version>0.12.3</version>
-<!--            <version>${jjwt.version}</version>-->
+            <version>${jjwt.version}</version>
         </dependency>
         <!--  上面OSS已经配置了-->
         <dependency>

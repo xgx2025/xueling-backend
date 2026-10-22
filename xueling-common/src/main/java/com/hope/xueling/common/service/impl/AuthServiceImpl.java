@@ -7,6 +7,7 @@ import com.hope.xueling.common.exception.BusinessException;
 import com.hope.xueling.common.exception.ValidationException;
 import com.hope.xueling.common.service.IAuthService;
 import com.hope.xueling.common.service.IUserService;
+import com.hope.xueling.common.security.LoginAttemptLimiter;
 import com.hope.xueling.common.util.EmailVerificationCodeUtils;
 import com.hope.xueling.common.util.JwtTokenUtils;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,8 @@ public class AuthServiceImpl implements IAuthService {
      * Redis模板，用于操作Redis缓存
      */
     private final StringRedisTemplate stringRedisTemplate;
+    private final JwtTokenUtils jwtTokenUtils;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
     private static final String REDIS_KEY_PREFIX = "refreshToken:";
 
@@ -101,6 +104,12 @@ public class AuthServiceImpl implements IAuthService {
             throw new ValidationException("密码不能为空");
         }
 
+        String account = StringUtils.hasText(email) ? email : phone;
+        if (!StringUtils.hasText(account)) {
+            throw new BusinessException("请提供邮箱或手机号");
+        }
+        loginAttemptLimiter.check(account);
+
         User user = null;
         if (StringUtils.hasText(email)) {
             user = userService.getUserByEmailWithPassword(email);
@@ -112,10 +121,12 @@ public class AuthServiceImpl implements IAuthService {
         }
 
         if (user == null || !checkPassword(rawPassword, user.getPassword())) {
-            log.warn("用户登录失败。Email: {}, Phone: {}", email, phone);
+            loginAttemptLimiter.failed(account);
+            log.warn("用户登录失败：账号或密码错误");
             throw new BusinessException("账号或密码错误");
         }
 
+        loginAttemptLimiter.succeeded(account);
         // 生成双token
         return generateTokens(user);
     }
@@ -149,8 +160,8 @@ public class AuthServiceImpl implements IAuthService {
         stringRedisTemplate.delete(REDIS_KEY_PREFIX+userId);
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
-        String accessToken = JwtTokenUtils.generateAccessToken(claims);
-        String refreshToken = JwtTokenUtils.generateRefreshToken(claims);
+        String accessToken = jwtTokenUtils.generateAccessToken(claims);
+        String refreshToken = jwtTokenUtils.generateRefreshToken(claims);
         // 刷新令牌存储到Redis中，键为REDIS_KEY_PREFIX + userId，值为refreshToken，过期时间为7天
         stringRedisTemplate.opsForValue().set(REDIS_KEY_PREFIX+userId, refreshToken, JwtTokenUtils.REFRESH_TOKEN_EXPIRE, TimeUnit.MILLISECONDS);
         return Map.of("accessToken",accessToken,"refreshToken",refreshToken);
