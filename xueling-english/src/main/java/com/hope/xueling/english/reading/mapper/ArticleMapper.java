@@ -29,8 +29,11 @@ public interface ArticleMapper {
      * @param categoryId 分类ID
      * @return 阅读文章文章列表
      */
-    @Select("select id, title, author, content from article where category_id = #{categoryId}")
+    @Select("select id, title, author, content from article where category_id = #{categoryId} and publish_status = 'PUBLISHED'")
     List<Article> selectArticlesByCategoryId(Long categoryId);
+
+    @Select("select count(*) from article where id = #{articleId} and publish_status = 'PUBLISHED'")
+    int countPublishedArticle(Long articleId);
 
     /**
      * 根据文章ID获取文章翻译

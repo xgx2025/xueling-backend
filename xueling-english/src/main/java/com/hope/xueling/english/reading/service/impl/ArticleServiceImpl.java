@@ -54,6 +54,7 @@ public class ArticleServiceImpl implements IArticleService {
         if (userId == null || articleId == null) {
             throw new ValidationException("用户ID和文章ID不能为空");
         }
+        requirePublished(articleId);
         String articleTranslation = articleMapper.selectArticleTranslation(userId, articleId);
         if (articleTranslation == null) {
             throw new ValidationException("文章翻译不存在");
@@ -82,6 +83,7 @@ public class ArticleServiceImpl implements IArticleService {
         if (userId == null || articleId == null) {
             throw new ValidationException("用户ID和文章ID不能为空");
         }
+        requirePublished(articleId);
         //检查用户是否是会员,并从数据库获取词汇短语汇总结果
         if (userMapper.isVip(userId) == null) {
             throw new ValidationException("用户不是会员，不能使用词汇短语汇总功能");
@@ -109,6 +111,7 @@ public class ArticleServiceImpl implements IArticleService {
         if (userMapper.isVip(userId) == null) {
             throw new ValidationException("用户不是会员，不能使用阅读测试功能");
         }
+        requirePublished(articleId);
         //先从数据库获取阅读测试题
         String readTest = articleReadingTestMapper.selectReadTest(userId, articleId, difficulty);
 
@@ -137,6 +140,7 @@ public class ArticleServiceImpl implements IArticleService {
         if (userMapper.isVip(userId) == null) {
             throw new ValidationException("用户不是会员，不能使用重新阅读测试功能");
         }
+        requirePublished(articleId);
         //获取文章内容
         String content = getArticleContentForAi(articleId);
         //调用大模型生成测试题
@@ -151,6 +155,7 @@ public class ArticleServiceImpl implements IArticleService {
         if (userId == null || articleId == null) {
             throw new ValidationException("用户ID和文章ID不能为空");
         }
+        requirePublished(articleId);
         //检查用户是否阅读完文章
         if (readingProgressMapper.selectReadStatus(userId, articleId) == null) {
             throw new ValidationException("用户未阅读完文章，不能收藏文章");
@@ -165,6 +170,7 @@ public class ArticleServiceImpl implements IArticleService {
         if(userId == null || articleId == null) {
             throw new ValidationException("用户ID和文章ID不能为空");
         }
+        requirePublished(articleId);
         //更新数据库中的阅读进度为阅读中
         readingProgressMapper.updateReadingStatus(userId, articleId);
     }
@@ -174,6 +180,7 @@ public class ArticleServiceImpl implements IArticleService {
         if(userId == null || articleId == null) {
             throw new ValidationException("用户ID和文章ID不能为空");
         }
+        requirePublished(articleId);
         //检查用户是否阅读时间是否超过2.5分钟(150秒)
         if (readingProgressMapper.selectReadTime(userId, articleId) < 150) {
             throw new ValidationException("总阅读时间不足2.5分钟，不能完成阅读");
@@ -188,6 +195,7 @@ public class ArticleServiceImpl implements IArticleService {
         if(userId == null || articleId == null || readTime == null || readTime < 0) {
             throw new ValidationException("用户ID、文章ID和阅读时间不能为空");
         }
+        requirePublished(articleId);
         //时间要大于等于150秒
         if (readTime < 150) {
             throw new ValidationException("阅读时间必须大于等于150秒");
@@ -201,6 +209,7 @@ public class ArticleServiceImpl implements IArticleService {
         if(userId == null || articleId == null) {
             throw new ValidationException("用户ID和文章ID不能为空");
         }
+        requirePublished(articleId);
         //更新数据库中的文章收藏
         articleFavoriteMapper.deleteCollectArticle(userId, articleId);
     }
@@ -214,11 +223,18 @@ public class ArticleServiceImpl implements IArticleService {
         if (articleId == null) {
             throw new ValidationException("文章ID不能为空");
         }
+        requirePublished(articleId);
         String tile = articleMapper.selectTitleById(articleId);
         String content = articleMapper.selectContentById(articleId);
         if (content == null) {
             throw new ValidationException("文章内容不存在");
         }
         return "文章的格式：每个小标题前有##，段落之间用\\n分隔，句子之间用&分隔\n文章标题：" + tile + "\n文章的内容；\n" + content;
+    }
+
+    private void requirePublished(Long articleId) {
+        if (articleId == null || articleMapper.countPublishedArticle(articleId) == 0) {
+            throw new ValidationException("文章不存在或暂未发布");
+        }
     }
 }
