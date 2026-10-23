@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication(
         scanBasePackages = {"com.hope.xueling"}
 )
-@MapperScan({"com.hope.xueling.english.vocab.mapper", "com.hope.xueling.english.reading.mapper", "com.hope.xueling.common.mapper", "com.hope.xueling.admin.mapper"})
+@MapperScan({"com.hope.xueling.english.vocab.mapper", "com.hope.xueling.english.reading.mapper", "com.hope.xueling.common.mapper"})
 public class XuelingEnglishApplication {
 
     public static void main(String[] args) {

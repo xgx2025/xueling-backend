@@ -1,7 +1,6 @@
 package com.hope.xueling.common.controller;
 
 import com.hope.xueling.common.domain.dto.CreateFeedbackDTO;
-import com.hope.xueling.common.domain.dto.UpdateFeedbackDTO;
 import com.hope.xueling.common.domain.vo.FeedbackVO;
 import com.hope.xueling.common.domain.vo.Result;
 import com.hope.xueling.common.service.IFeedbackService;
@@ -38,19 +37,4 @@ public class FeedbackController {
         return Result.success(feedbackService.findMine(userId(), id));
     }
 
-    @GetMapping("/admin/access")
-    public Result<Boolean> adminAccess() {
-        return Result.success(feedbackService.isAdmin(userId()));
-    }
-
-    @GetMapping("/admin")
-    public Result<List<FeedbackVO>> listForAdmin(@RequestParam(required = false) String status,
-                                                   @RequestParam(defaultValue = "1") int page) {
-        return Result.success(feedbackService.listForAdmin(userId(), status, page));
-    }
-
-    @PutMapping("/admin/{id}")
-    public Result<FeedbackVO> update(@PathVariable long id, @RequestBody UpdateFeedbackDTO request) {
-        return Result.success(feedbackService.update(userId(), id, request));
-    }
 }

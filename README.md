@@ -19,7 +19,7 @@
 │   └── src/main/java/com/hope/xueling/english/
 │       ├── vocab/           # 词书、词典、复习及翻译
 │       └── reading/         # 阅读文章及测试
-├── xueling-admin/           # 文章管理模块
+├── xueling-admin/           # 旧文章上传代码模块（不再由用户服务加载）
 ├── pom.xml                  # 父工程 Maven 配置
 ├── mvnw                     # Maven Wrapper 脚本 (Unix)
 └── mvnw.cmd                 # Maven Wrapper 脚本 (Windows)
@@ -94,7 +94,9 @@ Windows PowerShell 可使用 `Copy-Item` 执行同样的复制操作。首次运
 [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
-管理接口默认无人可访问。需要管理员时，在部署环境设置 `XUELING_ADMIN_IDS`，值为逗号分隔的现有用户 ID。
+用户服务不再加载旧 `xueling-admin` 文章管理模块，也不再提供反馈管理接口。
+新的独立管理服务位于同级目录 `xueling-admin-backend`，其管理员白名单与签名密钥独立配置。
+管理端文章发布状态上线时，先执行该仓库的数据库迁移，再部署本用户服务的文章可见性过滤，最后启用管理端。
 刷新令牌 Cookie 默认带 `Secure`，线上必须使用 HTTPS；仅本地 HTTP 开发可在被 Git 忽略的
 `application.yml` 中设置 `xueling.security.secure-cookies: false`。Druid 页面在配置模板中默认关闭。
 旧版写在源码中的 JWT 密钥已经公开，部署前必须更换；若历史提交中有真实的数据库或服务商凭据，也应到对应服务商处撤销并重发。
