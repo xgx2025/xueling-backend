@@ -2,6 +2,7 @@ package com.hope.xueling.english.reading.service;
 
 import com.hope.xueling.english.reading.domain.entity.Article;
 import com.hope.xueling.english.reading.domain.entity.ArticleCategory;
+import com.hope.xueling.english.reading.domain.vo.ArticleListVO;
 
 import java.util.List;
 
@@ -23,7 +24,11 @@ public interface IArticleService {
      * @param categoryId 分类ID
      * @return 阅读材料列表
      */
-    List<Article> getArticlesByCategoryId(Long categoryId);
+    List<ArticleListVO> getArticlesByCategoryId(Long categoryId);
+
+    List<Article> getReadableArticlesByCategoryId(Long userId, Long categoryId);
+
+    Article getArticleById(Long userId, Long articleId);
 
     /***
      * 获取文章翻译

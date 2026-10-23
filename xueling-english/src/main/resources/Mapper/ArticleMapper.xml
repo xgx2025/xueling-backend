@@ -3,15 +3,6 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.hope.xueling.english.reading.mapper.ArticleMapper">
 
-    <!-- 根据文章ID获取文章翻译,（根据userId到user表查询用户的vip_level>0,如果大于0,则查询，否则不查询） -->
-    <select id="selectArticleTranslation" resultType="java.lang.String">
-        select translation from article where id = #{articleId}
-        <if test="userId != null">
-            and user_id = #{userId}
-            and (select vip_level from user where id = #{userId}) > 0
-        </if>
-    </select>
-
     <!-- 检查用户是否阅读完文章 -->
     <select id="completeReadArticle" resultType="java.lang.Long">
         select id from article_reading_progress where user_id = #{userId} and article_id = #{articleId}

@@ -2,12 +2,13 @@ package com.hope.xueling.english.reading.mapper;
 
 import com.hope.xueling.english.reading.domain.entity.Article;
 import com.hope.xueling.english.reading.domain.entity.ArticleCategory;
+import com.hope.xueling.english.reading.domain.vo.ArticleListVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 阅读材料Mapper
@@ -29,11 +30,30 @@ public interface ArticleMapper {
      * @param categoryId 分类ID
      * @return 阅读文章文章列表
      */
-    @Select("select id, title, author, content from article where category_id = #{categoryId} and publish_status = 'PUBLISHED'")
-    List<Article> selectArticlesByCategoryId(Long categoryId);
+    @Select("select id, title, chinese_title, category_id, tag, author, image_url, is_free, create_time " +
+            "from article where category_id = #{categoryId} and publish_status = 'PUBLISHED' order by create_time desc, id desc")
+    List<ArticleListVO> selectArticlesByCategoryId(Long categoryId);
 
-    @Select("select count(*) from article where id = #{articleId} and publish_status = 'PUBLISHED'")
-    int countPublishedArticle(Long articleId);
+    @Select("select id, title, chinese_title, category_id, tag, author, content, chinese_meaning, " +
+            "vocabulary_phrases_summary, article_insights, image_url, is_free, create_time, update_time " +
+            "from article where category_id = #{categoryId} and publish_status = 'PUBLISHED' " +
+            "and (is_free = 1 or exists (select 1 from user u where u.id = #{userId} " +
+            "and u.account_status = 1 and u.vip_level > 0 " +
+            "and u.vip_start_at <= CURRENT_TIMESTAMP and u.vip_expire_at > CURRENT_TIMESTAMP)) " +
+            "order by create_time desc, id desc")
+    List<Article> selectReadableArticlesByCategoryId(@Param("categoryId") Long categoryId,
+                                                     @Param("userId") Long userId);
+
+    @Select("select id, title, chinese_title, category_id, tag, author, content, chinese_meaning, " +
+            "vocabulary_phrases_summary, article_insights, image_url, is_free, create_time, update_time " +
+            "from article where id = #{articleId} and publish_status = 'PUBLISHED' " +
+            "and (is_free = 1 or exists (select 1 from user u where u.id = #{userId} " +
+            "and u.account_status = 1 and u.vip_level > 0 " +
+            "and u.vip_start_at <= CURRENT_TIMESTAMP and u.vip_expire_at > CURRENT_TIMESTAMP))")
+    Article selectPublishedArticleById(@Param("articleId") Long articleId, @Param("userId") Long userId);
+
+    @Select("select is_free from article where id = #{articleId} and publish_status = 'PUBLISHED'")
+    Boolean selectPublishedIsFree(Long articleId);
 
     /**
      * 根据文章ID获取文章翻译
@@ -41,7 +61,11 @@ public interface ArticleMapper {
      * @param articleId 文章ID
      * @return 文章翻译
      */
-    String selectArticleTranslation(Long userId, Long articleId);
+    @Select("select chinese_meaning from article where id = #{articleId} and publish_status = 'PUBLISHED' " +
+            "and (is_free = 1 or exists (select 1 from user u where u.id = #{userId} " +
+            "and u.account_status = 1 and u.vip_level > 0 " +
+            "and u.vip_start_at <= CURRENT_TIMESTAMP and u.vip_expire_at > CURRENT_TIMESTAMP))")
+    String selectArticleTranslation(@Param("articleId") Long articleId, @Param("userId") Long userId);
 
     /**
      * 根据文章ID获取文章词汇短语汇总结果
@@ -49,17 +73,12 @@ public interface ArticleMapper {
      * @param articleId 文章ID
      * @return 文章词汇短语汇总结果
      */
-    @Select("select id, vocabulary_phrases_summary from article where id = #{articleId}")
-    Map<Long, String> selectArticlePhrases(Long articleId);
-
-    /**
-     * 根据文章ID获取文章内容
-     *
-     * @param articleId 文章ID
-     * @return 文章内容
-     */
-    @Select("select content from article where id = #{articleId}")
-    String selectContentById(Long articleId);
+    @Select("select vocabulary_phrases_summary from article where id = #{articleId} " +
+            "and publish_status = 'PUBLISHED' " +
+            "and (is_free = 1 or exists (select 1 from user u where u.id = #{userId} " +
+            "and u.account_status = 1 and u.vip_level > 0 " +
+            "and u.vip_start_at <= CURRENT_TIMESTAMP and u.vip_expire_at > CURRENT_TIMESTAMP))")
+    String selectArticlePhrases(@Param("articleId") Long articleId, @Param("userId") Long userId);
 
     /**
      * 插入文章词汇短语汇总结果
@@ -70,11 +89,4 @@ public interface ArticleMapper {
     @Update("update article set vocabulary_phrases_summary = #{summarizeEnglishPhrases} where id = #{articleId}")
     void updateArticlePhrases(Long articleId, String summarizeEnglishPhrases);
 
-    /**
-     * 根据文章ID获取文章标题
-     * @param articleId 文章ID
-     * @return 文章标题
-     */
-    @Select("select title from article where id = #{articleId}")
-    String selectTitleById(Long articleId);
 }

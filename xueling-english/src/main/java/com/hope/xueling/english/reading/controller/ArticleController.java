@@ -4,6 +4,7 @@ import com.hope.xueling.common.domain.vo.Result;
 import com.hope.xueling.common.util.ThreadLocalUtils;
 import com.hope.xueling.english.reading.domain.entity.Article;
 import com.hope.xueling.english.reading.domain.entity.ArticleCategory;
+import com.hope.xueling.english.reading.domain.vo.ArticleListVO;
 import com.hope.xueling.english.reading.service.IArticleService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -43,10 +44,24 @@ public class ArticleController {
      * @return 阅读文章列表
      */
     @GetMapping("/articles")
-    public Result<List<Article>> getArticlesByCategoryId(@RequestParam("categoryId") Long categoryId) {
+    public Result<List<Article>> getReadableArticlesByCategoryId(@RequestParam("categoryId") Long categoryId) {
+        Claims claims = ThreadLocalUtils.get();
+        Long userId = claims.get("userId", Long.class);
+        return Result.success(readService.getReadableArticlesByCategoryId(userId, categoryId), "获取阅读文章列表成功");
+    }
+
+    @GetMapping("/article-summaries")
+    public Result<List<ArticleListVO>> getArticlesByCategoryId(@RequestParam("categoryId") Long categoryId) {
         log.info("根据分类ID获取阅读文章列表，分类ID：{}", categoryId);
-        List<Article> articles = readService.getArticlesByCategoryId(categoryId);
+        List<ArticleListVO> articles = readService.getArticlesByCategoryId(categoryId);
         return Result.success(articles, "根据分类ID获取阅读文章列表成功");
+    }
+
+    @GetMapping("/articles/{articleId}")
+    public Result<Article> getArticleById(@PathVariable Long articleId) {
+        Claims claims = ThreadLocalUtils.get();
+        Long userId = claims.get("userId", Long.class);
+        return Result.success(readService.getArticleById(userId, articleId), "获取文章详情成功");
     }
 
     /**

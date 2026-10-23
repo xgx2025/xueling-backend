@@ -2,6 +2,9 @@ package com.hope.xueling.english.reading.domain.entity;
 
 import lombok.Data;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 文章明细实体类
  * @author 谢光益
@@ -39,4 +42,14 @@ public class Article {
      * 文章感悟
      */
     private String articleInsights;
+
+    private Long categoryId;
+    private String tag;
+    private String chineseMeaning;
+    private String vocabularyPhrasesSummary;
+    private String imageUrl;
+    private Boolean isFree;
+    private String createTime;
+    private String updateTime;
+    private Map<String, Object> highlights = Map.of("highlights", List.of());
 }

@@ -97,6 +97,11 @@ Windows PowerShell 可使用 `Copy-Item` 执行同样的复制操作。首次运
 用户服务不再加载旧 `xueling-admin` 文章管理模块，也不再提供反馈管理接口。
 新的独立管理服务位于同级目录 `xueling-admin-backend`，其管理员白名单与签名密钥独立配置。
 管理端文章发布状态上线时，先执行该仓库的数据库迁移，再部署本用户服务的文章可见性过滤，最后启用管理端。
+
+新文章列表 `GET /read/article-summaries?categoryId=...` 只返回已发布文章的展示字段，不包含正文。
+用户端通过 `GET /read/articles/{articleId}` 按 ID 加载正文；会员文章须有有效会员资格，
+文章翻译和阅读操作也执行同样的发布状态与会员检查。上线时需同步部署调用新详情接口的用户前端。
+旧 `GET /read/articles?categoryId=...` 暂时保留，只返回当前用户有权阅读的已发布正文，供旧版用户前端在部署过渡期使用。
 刷新令牌 Cookie 默认带 `Secure`，线上必须使用 HTTPS；仅本地 HTTP 开发可在被 Git 忽略的
 `application.yml` 中设置 `xueling.security.secure-cookies: false`。Druid 页面在配置模板中默认关闭。
 旧版写在源码中的 JWT 密钥已经公开，部署前必须更换；若历史提交中有真实的数据库或服务商凭据，也应到对应服务商处撤销并重发。
