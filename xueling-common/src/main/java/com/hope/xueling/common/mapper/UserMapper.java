@@ -25,5 +25,12 @@ public interface UserMapper extends BaseMapper<User> {
             "and vip_start_at <= CURRENT_TIMESTAMP and vip_expire_at > CURRENT_TIMESTAMP")
     Long isVip(Long userId);
 
+    /**
+     * 查询用户账户状态(0-禁用, 1-正常, 3-注销)
+     * @param userId 用户ID
+     * @return 账户状态，用户不存在时返回 null
+     */
+    @Select("select account_status from user where id = #{userId}")
+    Integer selectAccountStatus(Long userId);
 
 }

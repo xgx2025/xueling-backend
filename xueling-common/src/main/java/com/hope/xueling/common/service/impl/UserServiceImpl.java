@@ -208,6 +208,11 @@ public class UserServiceImpl implements IUserService {
         userMapper.updateAccountStatusById(userId);
     }
 
+    @Override
+    public Integer getAccountStatus(Long userId) {
+        return userMapper.selectAccountStatus(userId);
+    }
+
     /**
      * 生成唯一用户名
      * <p>原实现使用“用户总数+1”作为序号，并发注册或存在注销用户时会与

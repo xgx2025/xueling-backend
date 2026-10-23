@@ -126,6 +126,12 @@ public class AuthServiceImpl implements IAuthService {
             throw new BusinessException("账号或密码错误");
         }
 
+        Integer accountStatus = userService.getAccountStatus(user.getId());
+        if (accountStatus == null || accountStatus != 1) {
+            log.warn("账号 {} 登录被拒绝，账户状态: {}", account, accountStatus);
+            throw new BusinessException("账号已停用或注销，如有疑问请联系客服");
+        }
+
         loginAttemptLimiter.succeeded(account);
         // 生成双token
         return generateTokens(user);

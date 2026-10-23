@@ -5,6 +5,7 @@ import com.hope.xueling.common.domain.dto.LoginDTO;
 import com.hope.xueling.common.domain.dto.RegisterDTO;
 import com.hope.xueling.common.domain.vo.Result;
 import com.hope.xueling.common.service.IAuthService;
+import com.hope.xueling.common.service.IUserService;
 import com.hope.xueling.common.util.JwtTokenUtils;
 import com.hope.xueling.common.util.ThreadLocalUtils;
 import io.jsonwebtoken.Claims;
@@ -35,6 +36,7 @@ import java.util.Map;
 public class AuthController {
 
     private final IAuthService authService;
+    private final IUserService userService;
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtTokenUtils jwtTokenUtils;
 
@@ -139,6 +141,13 @@ public class AuthController {
             if (savedRefreshToken == null || !savedRefreshToken.equals(refreshToken)) {
                 log.warn("刷新令牌无效或已过期，userId: {}", userId);
                 return ResponseEntity.status(401).body(Result.fail(ResultCode.UNAUTHORIZED, "登录状态失效，请重新登录"));
+            }
+
+            Integer accountStatus = userService.getAccountStatus(userId);
+            if (accountStatus == null || accountStatus != 1) {
+                log.warn("刷新令牌被拒绝，userId: {} 账户状态: {}", userId, accountStatus);
+                stringRedisTemplate.delete(redisKey);
+                return ResponseEntity.status(401).body(Result.fail(ResultCode.UNAUTHORIZED, "账号已停用或注销，请重新登录"));
             }
 
             Map<String,Object> map = new HashMap<>();

@@ -3,6 +3,7 @@ package com.hope.xueling.common.security;
 import com.hope.xueling.common.controller.AuthController;
 import com.hope.xueling.common.domain.vo.Result;
 import com.hope.xueling.common.service.IAuthService;
+import com.hope.xueling.common.service.IUserService;
 import com.hope.xueling.common.util.JwtTokenUtils;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,9 @@ class RefreshTokenTest {
         ValueOperations<String, String> values = mock(ValueOperations.class);
         when(redis.opsForValue()).thenReturn(values);
         when(values.get("refreshToken:42")).thenReturn(refresh);
-        AuthController controller = new AuthController(mock(IAuthService.class), redis, jwt);
+        IUserService userService = mock(IUserService.class);
+        when(userService.getAccountStatus(42L)).thenReturn(1);
+        AuthController controller = new AuthController(mock(IAuthService.class), userService, redis, jwt);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new Cookie("refreshToken", refresh));
 
