@@ -50,6 +50,11 @@ public class ArticleController {
         return Result.success(readService.getReadableArticlesByCategoryId(userId, categoryId), "获取阅读文章列表成功");
     }
 
+    /**
+     * 按分类查询文章摘要列表，仅返回已发布文章，不加载正文
+     * @param categoryId 分类 ID
+     * @return 文章摘要列表
+     */
     @GetMapping("/article-summaries")
     public Result<List<ArticleListVO>> getArticlesByCategoryId(@RequestParam("categoryId") Long categoryId) {
         log.info("根据分类ID获取阅读文章列表，分类ID：{}", categoryId);
@@ -57,6 +62,11 @@ public class ArticleController {
         return Result.success(articles, "根据分类ID获取阅读文章列表成功");
     }
 
+    /**
+     * 查询文章详情，同时按会员与免费标记做可见性校验
+     * @param articleId 文章 ID
+     * @return 文章详情
+     */
     @GetMapping("/articles/{articleId}")
     public Result<Article> getArticleById(@PathVariable Long articleId) {
         Claims claims = ThreadLocalUtils.get();

@@ -17,6 +17,9 @@ public class WordDictionaryDTO {
      * 单词含义
      */
     private String meaning;
+    /**
+     * 按词性分组的释义列表
+     */
     private List<WordTranslationDTO> translations;
     /**
      * 单词音标

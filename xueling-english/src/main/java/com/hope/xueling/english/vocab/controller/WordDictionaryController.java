@@ -10,6 +10,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 词典控制器：按单词查询词条释义、音标与例句
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Slf4j
 @RequiredArgsConstructor
 @RestController

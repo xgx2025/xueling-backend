@@ -13,8 +13,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Result <T>{
+    /**
+     * 业务状态码：0 成功，非 0 见 ResultCode
+     */
     private Integer code;
+    /**
+     * 提示信息
+     */
     private String msg;
+    /**
+     * 业务数据
+     */
     private T data;
 
     /**

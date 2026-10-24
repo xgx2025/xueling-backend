@@ -3,6 +3,11 @@ package com.hope.xueling.english.vocab.domain.dto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 创建单词本入参
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Data
 @NoArgsConstructor
 public class CreateWordBookDTO {

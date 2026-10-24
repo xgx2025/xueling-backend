@@ -29,8 +29,17 @@ public class WordBookDetailVO {
     private Integer learningCoverage;
     /** 兼容旧客户端；新客户端应使用 learningCoverage。 */
     private Integer mastery;
+    /**
+     * 已学习词数
+     */
     private Integer learnedCount;
+    /**
+     * 该词书是否已纳入学习计划
+     */
     private Boolean studyEnabled;
+    /**
+     * 词书类型：SYSTEM 系统词书、USER 用户自建词书
+     */
     private String bookType;
     /**
      * 单词列表

@@ -43,13 +43,40 @@ public class Article {
      */
     private String articleInsights;
 
+    /**
+     * 所属分类 ID
+     */
     private Long categoryId;
+    /**
+     * 标签文本
+     */
     private String tag;
+    /**
+     * 中文翻译
+     */
     private String chineseMeaning;
+    /**
+     * 重点词汇与短语
+     */
     private String vocabularyPhrasesSummary;
+    /**
+     * 封面图地址
+     */
     private String imageUrl;
+    /**
+     * 是否免费文章
+     */
     private Boolean isFree;
+    /**
+     * 创建时间
+     */
     private String createTime;
+    /**
+     * 最后更新时间
+     */
     private String updateTime;
+    /**
+     * 预留的高亮标注数据，当前未填充，默认为空列表
+     */
     private Map<String, Object> highlights = Map.of("highlights", List.of());
 }

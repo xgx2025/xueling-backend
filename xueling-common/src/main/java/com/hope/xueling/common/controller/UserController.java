@@ -55,6 +55,11 @@ public class UserController {
     }
 
 
+    /**
+     * 上传并更新当前用户头像，返回头像访问地址
+     * @param avatar 头像文件
+     * @return 头像 URL
+     */
     @PutMapping("/avatar")
     public Result<String> updateAvatar(@RequestParam("file")MultipartFile avatar){
         Claims claims = ThreadLocalUtils.get();

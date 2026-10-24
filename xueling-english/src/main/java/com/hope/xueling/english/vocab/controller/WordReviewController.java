@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 单词复习辅助控制器：按 ID 批量取词条详情、查询单词族（同根词的不同词性）
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Slf4j
 @RequiredArgsConstructor
 @RestController

@@ -26,7 +26,13 @@ public class WordDictionaryVO {
      * 释义
      */
     private String meaning;
+    /**
+     * 按词性分组的释义列表
+     */
     private List<WordTranslationVO> translations;
+    /**
+     * 词条来源，如 ECDICT、ADMIN_IMPORT
+     */
     private String source;
     /**
      * 音标

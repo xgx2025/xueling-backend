@@ -43,6 +43,12 @@ public class AuthController {
     @Value("${xueling.security.secure-cookies:true}")
     private boolean secureCookies;
 
+    /**
+     * 构造刷新令牌 Cookie：HttpOnly、SameSite=Lax、路径为根路径
+     * @param value Cookie 值，登出时传空串
+     * @param maxAgeSeconds 有效期（秒），登出时传 0
+     * @return 待写入响应头的 Cookie
+     */
     private ResponseCookie refreshCookie(String value, long maxAgeSeconds) {
         return ResponseCookie.from("refreshToken", value)
                 .httpOnly(true)
@@ -110,6 +116,10 @@ public class AuthController {
 
 
 
+    /**
+     * 找回密码占位接口，当前未实现具体流程
+     * @return 固定返回字符串 forget
+     */
     @PostMapping("/forget")
     public String forget() {
         return "forget";

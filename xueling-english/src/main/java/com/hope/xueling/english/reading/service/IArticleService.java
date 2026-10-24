@@ -26,8 +26,20 @@ public interface IArticleService {
      */
     List<ArticleListVO> getArticlesByCategoryId(Long categoryId);
 
+    /**
+     * 按分类查询用户可阅读的文章（含正文），用于阅读列表的完整数据
+     * @param userId 用户 ID，用于会员与免费文章判定
+     * @param categoryId 分类 ID
+     * @return 可阅读文章列表
+     */
     List<Article> getReadableArticlesByCategoryId(Long userId, Long categoryId);
 
+    /**
+     * 查询文章详情，并按用户会员状态校验可见性
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @return 文章详情
+     */
     Article getArticleById(Long userId, Long articleId);
 
     /***
