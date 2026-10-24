@@ -51,7 +51,9 @@ public class WordBookServiceImpl implements IWordBookService {
      */
     private final StudyMapper studyMapper;
 
-    // 定义允许的颜色列表（应与前端一致，或者放在配置中心/数据库）
+    /**
+     * 定义允许的颜色列表（应与前端一致，或者放在配置中心/数据库）
+     */
     private static final Set<String> ALLOWED_COLORS = Set.of(
             "linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)",
             "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
@@ -61,7 +63,9 @@ public class WordBookServiceImpl implements IWordBookService {
             "linear-gradient(120deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%)"
     );
 
-    // 定义允许的图标列表
+    /**
+     * 定义允许的图标列表
+     */
     private static final Set<String> ALLOWED_ICONS = Set.of(
             "📘", "📖", "📚", "📕", "📗", "📙", "🎓", "🗣️", "📝", "🧠", "🌟", "🔥"
     );

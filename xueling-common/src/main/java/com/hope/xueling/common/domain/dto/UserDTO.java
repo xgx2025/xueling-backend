@@ -13,20 +13,36 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class UserDTO {
-    //用户ID（由服务端从令牌中写入，前端无需传）
+    /**
+     * 用户ID（由服务端从令牌中写入，前端无需传）
+     */
     private String id;
-    //用户名
+    /**
+     * 用户名
+     */
     private String username;
-    //邮箱
+    /**
+     * 邮箱
+     */
     private String email;
-    //手机号
+    /**
+     * 手机号
+     */
     private String phone;
-    //头像URL
+    /**
+     * 头像URL
+     */
     private String avatarUrl;
-    //性别
+    /**
+     * 性别
+     */
     private Integer gender;
-    //生日
+    /**
+     * 生日
+     */
     private String birthday;
-    //个人简介
+    /**
+     * 个人简介
+     */
     private String bio;
 }

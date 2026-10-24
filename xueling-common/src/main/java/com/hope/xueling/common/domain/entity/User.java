@@ -23,28 +23,50 @@ public class User {
      */
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
-    //用户名
+    /**
+     * 用户名
+     */
     private String username;
-    //邮箱
+    /**
+     * 邮箱
+     */
     private String email;
-    //手机号
+    /**
+     * 手机号
+     */
     private String phone;
-    //密码
+    /**
+     * 密码
+     */
     private String password;
-    //头像URL
+    /**
+     * 头像URL
+     */
     private String avatarUrl;
-    //性别
+    /**
+     * 性别
+     */
     private Integer gender;
-    //生日
+    /**
+     * 生日
+     */
     private String birthday;
-    //个人简介
+    /**
+     * 个人简介
+     */
     private String bio;
-    //vip等级
+    /**
+     * vip等级
+     */
     private Integer vipLevel;
-    //vip开始时间
+    /**
+     * vip开始时间
+     */
     @TableField("vip_start_at")
     private String vipStartTime;
-    //vip到期时间
+    /**
+     * vip到期时间
+     */
     @TableField("vip_expire_at")
     private String vipExpireTime;
 }

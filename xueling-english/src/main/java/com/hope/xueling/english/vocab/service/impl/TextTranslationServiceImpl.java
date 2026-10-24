@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class TextTranslationServiceImpl implements ITextTranslationService {
 
-    //智能翻译服务
+    /**
+     * 智能翻译服务
+     */
     private final SmartTranslation smartTranslation;
 
     /**
