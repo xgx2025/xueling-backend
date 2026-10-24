@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  最小注释校验：只要求 public 类型具备类级 Javadoc，不约束格式、行宽与命名。
+  在 verify 阶段执行：mvn verify -DskipTests
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+
+    <module name="TreeWalker">
+        <module name="JavadocType">
+            <property name="scope" value="public"/>
+            <property name="authorFormat" value=".*"/>
+            <!-- 只要求存在类级 Javadoc，不强制 record 参数标签 -->
+            <property name="allowMissingParamTags" value="true"/>
+        </module>
+    </module>
+</module>

@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 /**
  * 登录数据传输对象
  * @author 谢光湘
- * @date 2026/1/20
+ * @since 2026/1/20
  */
 
 @Data
