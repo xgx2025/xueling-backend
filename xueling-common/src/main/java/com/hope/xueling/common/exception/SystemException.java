@@ -6,9 +6,19 @@ package com.hope.xueling.common.exception;
  * @since 2026/1/20
  */
 public class SystemException extends BaseException {
+    /**
+     * 构造系统异常
+     * @param message 错误提示
+     */
     public SystemException(String message) {
         super(message);
     }
+
+    /**
+     * 构造系统异常，提示语按 String.format 模板填充
+     * @param message 提示模板
+     * @param args 模板参数
+     */
     public SystemException(String message, Object... args) {
         super(String.format(message, args));
     }
