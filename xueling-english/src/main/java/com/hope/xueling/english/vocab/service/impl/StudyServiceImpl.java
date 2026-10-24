@@ -23,13 +23,37 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.Comparator;
 
+/**
+ * 学习计划服务实现：以“用户 × 单词 × 英文到中文”的卡片为单位，负责今日队列、评分排程、学习统计与设置。
+ * <p>关键规则：到期卡优先于新词；到期数达到 30 时暂停引入新词；同一用户的写入通过锁定设置行串行化；
+ * 评分按 requestId 幂等、按卡片版本号做并发校验；当日到期清零且新词额度用尽时自动打卡。</p>
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Service
 public class StudyServiceImpl implements IStudyService {
+    /**
+     * 单次返回的队列卡片数与分页大小
+     */
     private static final int PAGE_SIZE = 20;
+    /**
+     * 学习相关的数据访问
+     */
     private final StudyMapper studyMapper;
+    /**
+     * 复习排程算法
+     */
     private final ReviewScheduler reviewScheduler;
+    /**
+     * 时钟，测试中可替换为固定时钟以验证跨天逻辑
+     */
     private final Clock clock;
 
+    /**
+     * 生产环境构造器，使用系统 UTC 时钟
+     * @param studyMapper 学习相关的数据访问
+     * @param reviewScheduler 复习排程算法
+     */
     @Autowired
     public StudyServiceImpl(StudyMapper studyMapper, ReviewScheduler reviewScheduler) {
         this(studyMapper, reviewScheduler, Clock.systemUTC());
@@ -41,8 +65,20 @@ public class StudyServiceImpl implements IStudyService {
         this.clock = clock;
     }
 
+    /**
+     * 用户时区下的自然日区间
+     * @param date 日期
+     * @param start 当日零点对应的时刻
+     * @param end 次日零点对应的时刻
+     */
     private record DayWindow(LocalDate date, Instant start, Instant end) {}
 
+    /**
+     * 按用户设置的时区计算当前自然日及其起止时刻
+     * @param settings 学习设置，提供时区
+     * @param now 当前时刻
+     * @return 自然日区间
+     */
     private DayWindow dayWindow(StudySettingsVO settings, Instant now) {
         ZoneId zone = ZoneId.of(settings.getTimeZone());
         LocalDate date = now.atZone(zone).toLocalDate();
@@ -50,10 +86,19 @@ public class StudyServiceImpl implements IStudyService {
                 date.plusDays(1).atStartOfDay(zone).toInstant());
     }
 
+    /**
+     * 取当前时刻并截断到毫秒，避免数据库精度差异导致的比较问题
+     * @return 当前时刻
+     */
     private Instant now() {
         return clock.instant().truncatedTo(ChronoUnit.MILLIS);
     }
 
+    /**
+     * 组装今日学习数据：计算到期数与剩余新词额度，到期卡优先，额度用尽或到期过多时不再给新词
+     * @param userId 用户 ID
+     * @return 今日学习数据
+     */
     @Override
     @Transactional
     public TodayStudyVO today(long userId) {
@@ -79,6 +124,12 @@ public class StudyServiceImpl implements IStudyService {
         return today;
     }
 
+    /**
+     * 提交一次评分：校验参数与请求编号，锁设置行后按 requestId 幂等、按版本号校验并发，再校验新词额度与到期时间，最后排程并落库；满足条件时自动打卡
+     * @param userId 用户 ID
+     * @param request 评分请求，包含单词 ID、评分、版本、请求编号与用时
+     * @return 评分后的卡片状态、到期时间与新版本号
+     */
     @Override
     @Transactional
     public StudyReviewResultVO submitReview(long userId, SubmitStudyReviewDTO request) {
@@ -166,6 +217,12 @@ public class StudyServiceImpl implements IStudyService {
         return new StudyReviewResultVO(String.valueOf(wordId), scheduled.state(), scheduled.dueAt(), versionAfter);
     }
 
+    /**
+     * 按用户时区汇总指定月份的学习情况，并计算当前连续、最长连续与累计打卡天数
+     * @param userId 用户 ID
+     * @param month 月份，格式 yyyy-MM，为空取当前月；仅允许最近 10 年且不晚于当前月
+     * @return 日历数据
+     */
     @Override
     @Transactional
     public StudyCalendarVO calendar(long userId, String month) {
@@ -215,6 +272,11 @@ public class StudyServiceImpl implements IStudyService {
                 longest, checkedDates.size(), days);
     }
 
+    /**
+     * 统计今日评分次数、新词数、累计已学词数、待复习数与到期卡回忆率
+     * @param userId 用户 ID
+     * @return 学习统计
+     */
     @Override
     @Transactional
     public StudyStatsVO stats(long userId) {
@@ -239,6 +301,12 @@ public class StudyServiceImpl implements IStudyService {
         int goodOrEasyRecalls;
     }
 
+    /**
+     * 统计近 7 天或 30 天的每日学习数据，含到期卡回忆率、良好/容易占比与历史到期积压
+     * @param userId 用户 ID
+     * @param days 统计天数，仅支持 7 或 30
+     * @return 按天排列的学习记录
+     */
     @Override
     @Transactional
     public List<StudyDayStatsVO> history(long userId, int days) {
@@ -278,6 +346,11 @@ public class StudyServiceImpl implements IStudyService {
         return result;
     }
 
+    /**
+     * 按复习次数分档统计词数
+     * @param userId 用户 ID
+     * @return 复习次数分布
+     */
     @Override
     @Transactional
     public StudyReviewCountVO reviewCounts(long userId) {
@@ -285,6 +358,14 @@ public class StudyServiceImpl implements IStudyService {
         return studyMapper.reviewCounts(userId);
     }
 
+    /**
+     * 计算熟悉度分布：复习态且稳定度不低于 30 天记为已稳定，否则为巩固中，非复习态为学习中；同时给出需要关注的词
+     * @param userId 用户 ID
+     * @param bookId 词书 ID，为空表示全部词书
+     * @param stage 掌握阶段过滤：ALL、LEARNING、CONSOLIDATING、STABLE
+     * @param page 页码，从 1 开始
+     * @return 熟悉度分布与分页明细
+     */
     @Override
     @Transactional
     public StudyFamiliarityVO familiarity(long userId, Long bookId, String stage, int page) {
@@ -335,6 +416,11 @@ public class StudyServiceImpl implements IStudyService {
                 filtered.size(), page, PAGE_SIZE, filtered.subList(start, end), attention);
     }
 
+    /**
+     * 获取学习设置，不存在时按默认值初始化
+     * @param userId 用户 ID
+     * @return 学习设置
+     */
     @Override
     @Transactional
     public StudySettingsVO settings(long userId) {
@@ -342,6 +428,12 @@ public class StudyServiceImpl implements IStudyService {
         return studyMapper.settings(userId, false);
     }
 
+    /**
+     * 更新学习设置：每日新词上限 0 至 100，目标记忆率 0.8 至 0.97，时区需为合法的 IANA 标识
+     * @param userId 用户 ID
+     * @param request 时区、每日新词上限与目标记忆率
+     * @return 更新后的学习设置
+     */
     @Override
     @Transactional
     public StudySettingsVO updateSettings(long userId, UpdateStudySettingsDTO request) {
@@ -363,6 +455,12 @@ public class StudyServiceImpl implements IStudyService {
         return settings;
     }
 
+    /**
+     * 启用或停用某个词书参与学习计划，停用后该词书的词不再进入队列
+     * @param userId 用户 ID
+     * @param bookId 词书 ID
+     * @param enabled 是否纳入学习计划
+     */
     @Override
     @Transactional
     public void setBookEnabled(long userId, long bookId, boolean enabled) {

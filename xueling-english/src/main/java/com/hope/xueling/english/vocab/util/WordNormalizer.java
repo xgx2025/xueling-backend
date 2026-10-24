@@ -4,10 +4,20 @@ import com.hope.xueling.common.exception.ValidationException;
 import java.text.Normalizer;
 import java.util.Locale;
 
-/** 词典导入和查询必须使用同一套规范化规则。 */
+/**
+ * 单词规范化工具：词典导入与查询必须使用同一套规则，否则同一单词会生成不同的 word_key。
+ * <p>规则为 NFKC 归一化、去首尾空白、连续空白折叠为单个空格、转小写。</p>
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 public final class WordNormalizer {
     private WordNormalizer() {}
 
+    /**
+     * 将单词或词组规范化为检索键
+     * @param word 原始单词或词组
+     * @return 规范化后的检索键
+     */
     public static String normalize(String word) {
         if (word == null) {
             throw new ValidationException("请输入英文单词或词组");

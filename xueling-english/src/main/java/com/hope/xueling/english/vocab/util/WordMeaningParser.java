@@ -7,13 +7,22 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** 将 ECDICT 的原始多行释义转换为可展示的义项，无法识别的内容保留为“其他”。 */
+/**
+ * 释义解析工具：将 ECDICT 的原始多行释义转换为可展示的义项，无法识别词性的内容保留为“其他”。
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 public final class WordMeaningParser {
     private static final Pattern POS = Pattern.compile(
             "(?i)(?<![a-z])(n|v|vt|vi|adj|adv|prep|conj|pron|int|interj|num|art|aux|pl|abbr|a|ad)\\.\\s*");
 
     private WordMeaningParser() {}
 
+    /**
+     * 把 ECDICT 的多行释义按词性前缀切分为义项；无法识别词性的内容归入“其他”
+     * @param meaning 原始释义文本，一行内可能包含多个词性片段
+     * @return 按词性分组的义项列表，无内容时返回空列表
+     */
     public static List<WordTranslationVO> parse(String meaning) {
         if (meaning == null || meaning.isBlank()) {
             return List.of();
@@ -31,6 +40,12 @@ public final class WordMeaningParser {
                 labels.add(matcher.group(1).toLowerCase() + ".");
             }
             if (starts.isEmpty()) {
+                /**
+                 * 把一段释义按分号切分后追加为一条词性义项，空白内容忽略
+                 * @param result 结果列表
+                 * @param pos 词性标签
+                 * @param text 该词性下的释义文本
+                 */
                 add(result, "其他", line);
                 continue;
             }

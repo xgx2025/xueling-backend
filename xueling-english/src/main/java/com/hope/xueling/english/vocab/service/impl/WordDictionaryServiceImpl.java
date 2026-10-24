@@ -25,15 +25,37 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * 词典服务实现：优先读库中已有释义，缺失时调用大模型生成并回写，词条按 word_key 跨用户复用
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Slf4j
 @RequiredArgsConstructor
 @Service
 public class WordDictionaryServiceImpl implements IWordDictionaryService {
+    /**
+     * 大模型词典释义服务，仅在库中无有效释义时调用
+     */
     private final IWordDefinitionService wordDefinitionService;
+    /**
+     * 词条数据访问
+     */
     private final WordDictionaryMapper wordDictionaryMapper;
+    /**
+     * 词书词条关联访问，用于判断单词是否已在用户词书中
+     */
     private final WordBookDictionaryRelationMapper wordBookDictionaryRelationMapper;
+    /**
+     * 词书数据访问，用于取当前用户的词书范围
+     */
     private final WordBookMapper wordBookMapper;
 
+    /**
+     * 查询单词释义：库中已有释义直接返回；否则调用大模型生成并落库，并发插入冲突时回退为查询补齐
+     * @param word 待查单词
+     * @return 词典视图，含按词性分组的义项与是否已在词书中的标记
+     */
     @Override
     public WordDictionaryVO queryWordDictionary(String word) {
         String key = WordNormalizer.normalize(word);
@@ -68,6 +90,11 @@ public class WordDictionaryServiceImpl implements IWordDictionaryService {
                 entity = findByKey(key);
                 if (entity == null) throw ex;
                 if (entity.getMeaning() == null || entity.getMeaning().isBlank()) {
+                    /**
+                     * 用大模型结果补齐已有词条：覆盖释义与例句，仅在原音标为空时补充音标，来源标记为 AI_ENRICHED
+                     * @param entity 待补齐的词条
+                     * @param translation 大模型返回的词典条目
+                     */
                     enrich(entity, translation);
                 }
             }
@@ -77,6 +104,11 @@ public class WordDictionaryServiceImpl implements IWordDictionaryService {
         return toVO(entity);
     }
 
+    /**
+     * 按 ID 批量查询词条详情
+     * @param wordIds 词条 ID 列表（字符串）
+     * @return 词条详情列表
+     */
     @Override
     public List<WordVO> getWordDetailByIds(List<String> wordIds) {
         return wordDictionaryMapper.selectByIds(wordIds).stream().map(entity -> {
@@ -87,6 +119,11 @@ public class WordDictionaryServiceImpl implements IWordDictionaryService {
         }).toList();
     }
 
+    /**
+     * 按规范化检索键查询词条
+     * @param key 规范化后的 word_key
+     * @return 词条实体，不存在时返回 null
+     */
     private WordDictionary findByKey(String key) {
         return wordDictionaryMapper.selectOne(new QueryWrapper<WordDictionary>().eq("word_key", key));
     }
@@ -102,6 +139,11 @@ public class WordDictionaryServiceImpl implements IWordDictionaryService {
         wordDictionaryMapper.updateById(entity);
     }
 
+    /**
+     * 转换为视图对象：解析义项，并在存在登录用户时标记该词是否已加入其词书
+     * @param entity 词条实体
+     * @return 词典视图
+     */
     private WordDictionaryVO toVO(WordDictionary entity) {
         WordDictionaryVO vo = new WordDictionaryVO();
         BeanUtils.copyProperties(entity, vo);

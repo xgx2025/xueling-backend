@@ -34,9 +34,21 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class WordBookServiceImpl implements IWordBookService {
+    /**
+     * 词书数据访问
+     */
     private final WordBookMapper wordBookMapper;
+    /**
+     * 词条数据访问
+     */
     private final WordDictionaryMapper wordDictionaryMapper;
+    /**
+     * 词书词条关联访问
+     */
     private final WordBookDictionaryRelationMapper wordBookDictionaryRelationMapper;
+    /**
+     * 学习进度访问，用于统计已学词数与词书启停状态
+     */
     private final StudyMapper studyMapper;
 
     // 定义允许的颜色列表（应与前端一致，或者放在配置中心/数据库）
@@ -55,6 +67,11 @@ public class WordBookServiceImpl implements IWordBookService {
     );
 
 
+    /**
+     * 创建用户自建词书：封面颜色与图标需在白名单内，词数初始为 0
+     * @param createWordBookDTO 词书名称、封面颜色与图标
+     * @param userId 创建人用户 ID
+     */
     @Override
     public void createWordBook(CreateWordBookDTO createWordBookDTO, Long userId) {
         // 1. 白名单校验
@@ -75,6 +92,11 @@ public class WordBookServiceImpl implements IWordBookService {
         wordBookMapper.insert(wordBook);
     }
 
+    /**
+     * 查询用户可见的词书：自己创建的词书加全部系统词书，同时计算学习覆盖率与学习计划启停状态
+     * @param userId 用户 ID
+     * @return 词书列表
+     */
     @Override
     public List<WordBookVO> getWordBooks(Long userId) {
         // 查询用户所有单词本
@@ -106,6 +128,12 @@ public class WordBookServiceImpl implements IWordBookService {
         }).toList();
     }
 
+    /**
+     * 查询词书详情：系统词书所有用户可读，自建词书仅创建者可读，并返回词条列表
+     * @param wordBookId 词书 ID
+     * @param userId 用户 ID
+     * @return 词书详情
+     */
     @Override
     public WordBookDetailVO getWordBookDetail(Long wordBookId, Long userId) {
         // 检查单词本是否存在，用户是否对单词本有读写权限
@@ -156,6 +184,11 @@ public class WordBookServiceImpl implements IWordBookService {
     }
 
 
+    /**
+     * 把逗号分隔的单词列表匹配到系统词典中已有释义的词条，用于批量导入前的校验
+     * @param words 逗号分隔的单词串
+     * @return 匹配到的词条列表
+     */
     @Override
     public List<WordDictionaryVO> matchWords(String words) {
         if (words == null || words.trim().isEmpty()) {
@@ -186,6 +219,11 @@ public class WordBookServiceImpl implements IWordBookService {
         }).toList();
     }
 
+    /**
+     * 向词书批量添加单词：单次最多 20 个，已存在的关联自动跳过，并同步更新词书词数
+     * @param addWordsToWordBookDTO 词书 ID 与单词 ID 列表
+     * @param userId 用户 ID
+     */
     @Transactional
     @Override
     public void addWordsToWordBook(AddWordsToWordBookDTO addWordsToWordBookDTO, Long userId) {
@@ -221,6 +259,11 @@ public class WordBookServiceImpl implements IWordBookService {
         wordBookMapper.updateById(wordBook);
     }
 
+    /**
+     * 从词书批量移除单词，并同步更新词书词数
+     * @param removeWordsFromWordBookDTO 词书 ID 与单词 ID 列表
+     * @param userId 用户 ID
+     */
     @Override
     public void deleteWordsFromWordBook(RemoveWordsFromWordBookDTO removeWordsFromWordBookDTO, Long userId) {
         Long wordBookId = Long.parseLong(removeWordsFromWordBookDTO.getWordBookId());
@@ -254,6 +297,12 @@ public class WordBookServiceImpl implements IWordBookService {
         return wordBook;
     }
 
+    /**
+     * 按读权限取词书：系统词书所有人可读，自建词书仅创建者可读
+     * @param wordBookId 词书 ID
+     * @param userId 用户 ID
+     * @return 词书实体
+     */
     private WordBook getReadableWordBook(Long wordBookId, Long userId) {
         WordBook book = wordBookMapper.selectById(wordBookId);
         if (book == null || book.getIsDeleted() != 0

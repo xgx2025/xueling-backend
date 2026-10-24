@@ -16,10 +16,19 @@ public class TextTranslationServiceImpl implements ITextTranslationService {
     //智能翻译服务
     private final SmartTranslation smartTranslation;
 
+    /**
+     * 注入大模型翻译服务
+     * @param smartTranslation 大模型单次对话服务
+     */
     public TextTranslationServiceImpl(SmartTranslation smartTranslation) {
         this.smartTranslation = smartTranslation;
     }
 
+    /**
+     * 翻译单个英文单词，仅接受纯字母输入
+     * @param word 待翻译的单词
+     * @return 翻译文本
+     */
     @Override
     public String translateWord(String word) {
         // 检查单词是否为空

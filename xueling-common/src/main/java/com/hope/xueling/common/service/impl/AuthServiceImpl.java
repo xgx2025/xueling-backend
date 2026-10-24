@@ -46,12 +46,25 @@ public class AuthServiceImpl implements IAuthService {
      * Redis模板，用于操作Redis缓存
      */
     private final StringRedisTemplate stringRedisTemplate;
+    /**
+     * JWT 令牌工具，签发访问令牌与刷新令牌
+     */
     private final JwtTokenUtils jwtTokenUtils;
+    /**
+     * 登录失败限流器
+     */
     private final LoginAttemptLimiter loginAttemptLimiter;
 
+    /**
+     * 刷新令牌在 Redis 中的键前缀，键为前缀 + 用户 ID
+     */
     private static final String REDIS_KEY_PREFIX = "refreshToken:";
 
 
+    /**
+     * 用户注册：校验账号、密码强度与验证码，密码经 BCrypt 加密后落库；手机号注册暂未支持
+     * @param registerDTO 注册信息，包含邮箱或手机号、密码、确认密码与验证码
+     */
     @Override
     public void register(RegisterDTO registerDTO) {
         // 检验参数
@@ -94,6 +107,11 @@ public class AuthServiceImpl implements IAuthService {
         userService.insertUser(user);
     }
 
+    /**
+     * 用户登录：先做失败限流校验，再按邮箱或手机号查用户并校验密码，最后检查账号状态并签发双令牌
+     * @param loginDTO 登录信息，包含邮箱或手机号与密码
+     * @return 访问令牌与刷新令牌，键为 accessToken、refreshToken
+     */
     @Override
     public Map<String,String> login(LoginDTO loginDTO) {
         String email = loginDTO.getEmail();
@@ -137,6 +155,10 @@ public class AuthServiceImpl implements IAuthService {
         return generateTokens(user);
     }
 
+    /**
+     * 登出：删除 Redis 中该用户的刷新令牌，使刷新链路立即失效
+     * @param userId 用户 ID
+     */
     @Override
     public void logout(String userId) {
         // 删除Redis中的刷新令牌
@@ -144,11 +166,21 @@ public class AuthServiceImpl implements IAuthService {
         log.info("用户{}已登出，刷新令牌已删除", userId);
     }
 
+    /**
+     * 发送邮箱验证码，含发送频率限制
+     * @param email 目标邮箱
+     * @param userIP 请求方 IP，用于日志排查
+     */
     @Override
     public void sendEmailVerificationCode(String email,String userIP) {
         emailVerificationCodeUtils.generateAndSendCode(email,userIP);
     }
 
+    /**
+     * 发送手机验证码，当前未实现
+     * @param phone 手机号
+     * @param userIP 请求方 IP
+     */
     @Override
     public void sendPhoneVerificationCode(String phone,String userIP) {
         // TODO: 发送手机号验证码

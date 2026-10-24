@@ -23,6 +23,11 @@ import java.util.stream.Collectors;
 public class WordDefinitionServiceImpl implements IWordDefinitionService {
     private final ChatClient doubaoChatClient;
 
+    /**
+     * 调用大模型生成结构化词典条目，并做严格校验：返回词必须与输入词规范化后一致、义项不能为空、长度超限或格式异常时返回 null
+     * @param word 待查的英文单词或短语
+     * @return 词典条目，校验不通过时返回 null
+     */
     @Override
     public WordDictionaryDTO translateWord(String word) {
         String systemPrompt = """

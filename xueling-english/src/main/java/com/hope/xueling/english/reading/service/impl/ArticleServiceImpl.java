@@ -28,18 +28,45 @@ import java.util.List;
 @Service
 public class ArticleServiceImpl implements IArticleService {
 
+    /**
+     * 文章与分类的数据访问
+     */
     private final ArticleMapper articleMapper;
+    /**
+     * 用户数据访问，用于会员判定
+     */
     private final UserMapper userMapper;
+    /**
+     * 阅读测试题的数据访问
+     */
     private final ArticleReadingTestMapper articleReadingTestMapper;
+    /**
+     * 阅读进度与阅读时长的数据访问
+     */
     private final ReadingProgressMapper readingProgressMapper;
+    /**
+     * 文章收藏的数据访问
+     */
     private final ArticleFavoriteMapper articleFavoriteMapper;
+    /**
+     * 大模型阅读助手，负责句子分析、词汇汇总与测试题生成
+     */
     private final SmartReadingAssistant smartReadingAssistant;
 
+    /**
+     * 查询启用中的文章分类，按排序值升序
+     * @return 分类列表
+     */
     @Override
     public List<ArticleCategory> getArticleCategories() {
         return articleMapper.selectArticleCategories();
     }
 
+    /**
+     * 按分类查询已发布文章摘要，不加载正文
+     * @param categoryId 分类 ID
+     * @return 文章摘要列表
+     */
     @Override
     public List<ArticleListVO> getArticlesByCategoryId(Long categoryId) {
         //检查分类ID是否为空
@@ -50,6 +77,12 @@ public class ArticleServiceImpl implements IArticleService {
         return articles;
     }
 
+    /**
+     * 按分类查询用户可读的文章（含正文），免费与会员可见规则由 SQL 处理
+     * @param userId 用户 ID
+     * @param categoryId 分类 ID
+     * @return 文章列表
+     */
     @Override
     public List<Article> getReadableArticlesByCategoryId(Long userId, Long categoryId) {
         if (userId == null || categoryId == null) {
@@ -58,14 +91,31 @@ public class ArticleServiceImpl implements IArticleService {
         return articleMapper.selectReadableArticlesByCategoryId(categoryId, userId);
     }
 
+    /**
+     * 查询已发布文章详情，并按免费标记与会员状态校验可见性
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @return 文章详情
+     */
     @Override
     public Article getArticleById(Long userId, Long articleId) {
+        /**
+         * 校验文章可见性：文章必须已发布，非免费文章要求用户具备有效会员
+         * @param userId 用户 ID
+         * @param articleId 文章 ID
+         */
         requireReadable(userId, articleId);
         Article article = articleMapper.selectPublishedArticleById(articleId, userId);
         if (article == null) throw new ValidationException("文章不存在或暂未发布");
         return article;
     }
 
+    /**
+     * 查询文章中文翻译，仅对可见用户开放，翻译缺失时报错
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @return 中文翻译
+     */
     @Override
     public String getArticleTranslation(Long userId, Long articleId) {
         if (userId == null || articleId == null) {
@@ -79,6 +129,12 @@ public class ArticleServiceImpl implements IArticleService {
         return articleTranslation;
     }
 
+    /**
+     * 句子分析（会员功能）：直接调用大模型解析句子结构，结果不落库
+     * @param userId 用户 ID
+     * @param sentence 待分析的英文句子
+     * @return 分析结果
+     */
     @Override
     public String sentenceAnalysis(Long userId, String sentence) {
         if (userId == null || sentence == null || sentence.isEmpty()) {
@@ -95,6 +151,12 @@ public class ArticleServiceImpl implements IArticleService {
         return analysisResult;
     }
 
+    /**
+     * 词汇短语汇总（会员功能）：优先读库中已有结果，缺失时调用大模型生成并回写
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @return 词汇短语汇总文本
+     */
     @Override
     public String summarizeEnglishPhrases(Long userId, Long articleId) {
         if (userId == null || articleId == null) {
@@ -120,6 +182,13 @@ public class ArticleServiceImpl implements IArticleService {
         return articlePhrases;
     }
 
+    /**
+     * 阅读测试（会员功能）：优先读库中该难度的测试题，缺失时生成并按是否存在记录选择插入或更新
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @param difficulty 难度级别
+     * @return 测试题内容
+     */
     @Override
     public String readTest(Long userId, Long articleId, Integer difficulty) {
         if (userId == null || articleId == null || difficulty == null || difficulty < 0) {
@@ -150,6 +219,13 @@ public class ArticleServiceImpl implements IArticleService {
         return readTest;
     }
 
+    /**
+     * 重新生成阅读测试题（会员功能），生成后覆盖库中该难度的记录
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @param difficulty 难度级别
+     * @return 新的测试题内容
+     */
     @Override
     public String reReadTest(Long userId, Long articleId, Integer difficulty) {
         if (userId == null || articleId == null || difficulty == null || difficulty < 0) {
@@ -168,6 +244,11 @@ public class ArticleServiceImpl implements IArticleService {
         return reReadTest;
     }
 
+    /**
+     * 收藏文章，要求用户已完成该文章阅读
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     */
     @Override
     public void collectArticle(Long userId, Long articleId) {
         if (userId == null || articleId == null) {
@@ -183,6 +264,11 @@ public class ArticleServiceImpl implements IArticleService {
         articleFavoriteMapper.updateCollectArticle(userId, articleId);
     }
 
+    /**
+     * 将阅读进度标记为阅读中
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     */
     @Override
     public void updateReadingStatus(Long userId, Long articleId) {
         if(userId == null || articleId == null) {
@@ -193,6 +279,11 @@ public class ArticleServiceImpl implements IArticleService {
         readingProgressMapper.updateReadingStatus(userId, articleId);
     }
 
+    /**
+     * 完成阅读，要求累计阅读时长不少于 150 秒
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     */
     @Override
     public void completeReadArticle(Long userId, Long articleId) {
         if(userId == null || articleId == null) {
@@ -207,6 +298,12 @@ public class ArticleServiceImpl implements IArticleService {
         readingProgressMapper.updateReadStatus(userId, articleId);
     }
 
+    /**
+     * 累加文章阅读时长，单次上报需不少于 150 秒
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     * @param readTime 本次阅读时长（秒）
+     */
     @Override
     public void addReadTime(Long userId, Long articleId, Integer readTime) {
         //更新数据库中的阅读时间
@@ -222,6 +319,11 @@ public class ArticleServiceImpl implements IArticleService {
         readingProgressMapper.updateReadTime(userId, articleId, readTime);
     }
 
+    /**
+     * 取消文章收藏
+     * @param userId 用户 ID
+     * @param articleId 文章 ID
+     */
     @Override
     public void cancelCollectArticle(Long userId, Long articleId) {
         if(userId == null || articleId == null) {

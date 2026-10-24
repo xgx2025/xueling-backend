@@ -31,8 +31,15 @@ public class UserServiceImpl implements IUserService {
 
     private final UserMapper userMapper;
     private final AliOSSUtils aliOSSUtils;
+    /**
+     * 新用户默认头像地址
+     */
     private final String DEFAULT_AVATAR_URL = "https://xueling-platform.oss-cn-hangzhou.aliyuncs.com/d915734b-a240-4350-acb6-30b6e2d3d981.jpg";
 
+    /**
+     * 新增用户：生成唯一用户名并填充默认头像，主键由 MyBatis-Plus 雪花算法生成
+     * @param user 待落库的用户，至少包含邮箱或手机号与密码摘要
+     */
     @Override
     public void insertUser(User user) {
         // 主键由 MyBatis-Plus 统一生成（见 User#id 上的 @TableId），此处不再手动赋值，
@@ -78,6 +85,10 @@ public class UserServiceImpl implements IUserService {
     }
 
 
+    /**
+     * 按用户 ID 更新资料，仅允许修改用户名、性别、生日与个人简介
+     * @param userDTO 用户资料，id 为字符串形式
+     */
     @Override
     public void updateUserById(UserDTO userDTO) {
         // DTO 的 id 是对外的字符串形式，这里转回 Long 参与数据库操作
@@ -108,6 +119,11 @@ public class UserServiceImpl implements IUserService {
     }
 
 
+    /**
+     * 查询用户信息并转换为视图对象，会员等级按有效期实时判定
+     * @param id 用户 ID
+     * @return 用户视图
+     */
     @Override
     public UserVO getUserInfo(Long id) {
         //检查id是否为空
@@ -178,6 +194,12 @@ public class UserServiceImpl implements IUserService {
         return password;
     }
 
+    /**
+     * 上传头像到 OSS 并回写用户的头像地址
+     * @param userId 用户 ID
+     * @param avatar 头像文件
+     * @return 头像访问地址
+     */
     @Override
     public String uploadAvatar(Long userId, MultipartFile avatar) {
         try {
@@ -193,6 +215,11 @@ public class UserServiceImpl implements IUserService {
         }
     }
 
+    /**
+     * 注销用户：将账号状态置为已注销（3），手机验证码校验尚未实现
+     * @param userId 用户 ID
+     * @param verificationCode 验证码
+     */
     @Override
     public void cancelUserAccount(Long userId, String verificationCode) {
         //检查用户ID是否为空
@@ -208,6 +235,11 @@ public class UserServiceImpl implements IUserService {
         userMapper.updateAccountStatusById(userId);
     }
 
+    /**
+     * 查询账号状态
+     * @param userId 用户 ID
+     * @return 账号状态：0 禁用、1 正常、3 已注销；用户不存在时返回 null
+     */
     @Override
     public Integer getAccountStatus(Long userId) {
         return userMapper.selectAccountStatus(userId);

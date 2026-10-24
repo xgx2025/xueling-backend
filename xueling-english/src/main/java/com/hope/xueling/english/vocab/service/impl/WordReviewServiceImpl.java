@@ -15,14 +15,31 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
+/**
+ * 单词族服务实现：借助大模型识别同根不同词性的单词，再逐个取释义并组装成“根 → 词性 → 单词 → 释义”的树
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Slf4j
 @RequiredArgsConstructor
 @Service
 public class WordReviewServiceImpl implements IWordReviewService {
+    /**
+     * DeepSeek 对话客户端，当前未参与单词族构建，保留备用
+     */
     private final ChatClient deepseekChatClient;
+    /**
+     * 豆包对话客户端，用于识别其他词性的单词
+     */
     private final ChatClient doubaoChatClient;
+    /**
+     * 词典释义服务，用于补齐每个单词的释义
+     */
     private final IWordDefinitionService wordDefinitionService;
 
+    /**
+     * 词性缩写到中文名称的映射
+     */
     public static final Map<String, String> POS_CHINESE_MAP = Map.of(
             "n", "名词",
             "v", "动词",
@@ -35,6 +52,11 @@ public class WordReviewServiceImpl implements IWordReviewService {
     );
 
 
+    /**
+     * 构建单词族树：识别其他词性后，为每个词性创建词性节点、单词节点与释义节点
+     * @param baseWord 基础单词
+     * @return 单词族树根节点
+     */
     @Override
     public WordFamilyNodeVO getWordFamilyTree(String baseWord) {
         WordPosListDTO wordPosList = new WordPosListDTO();

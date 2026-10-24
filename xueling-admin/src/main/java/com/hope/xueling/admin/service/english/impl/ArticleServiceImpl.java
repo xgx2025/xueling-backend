@@ -28,11 +28,27 @@ import java.net.URL;
 @Service("adminArticleService")
 public class ArticleServiceImpl implements ArticleService {
 
+    /**
+     * 大模型阅读助手，用于标题翻译、正文格式化、翻译、词汇汇总与感悟生成
+     */
     private final SmartReadingAssistant smartReadingAssistant;
+    /**
+     * 智谱图片生成模型，用于生成文章封面
+     */
     private final ImageModel zhipuImageModel;
+    /**
+     * 文章数据访问
+     */
     private final ArticleMapper articleMapper;
+    /**
+     * OSS 上传工具，用于保存生成的封面图
+     */
     private final AliOSSUtils aliOSSUtils;
 
+    /**
+     * 上传文章：依次完成标题翻译、正文格式化、中文翻译、封面生成、词汇汇总与感悟生成，最后落库
+     * @param articleDTO 文章标题、分类、标签、作者、正文与是否免费
+     */
     @Override
     public void uploadArticle(ArticleDTO articleDTO) throws MalformedURLException {
         if(articleDTO == null) {

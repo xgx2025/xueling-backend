@@ -16,20 +16,35 @@ import java.util.UUID;
  */
 @Component
 public class AliOSSUtils {
+    /**
+     * OSS 访问域名，如 https://oss-cn-hangzhou.aliyuncs.com
+     */
     @Value("${aliyun.oss.endpoint}")
     private String endpoint;
 
+    /**
+     * OSS AccessKey ID
+     */
     @Value("${aliyun.oss.accessKeyId}")
     private String accessKeyId;
 
+    /**
+     * OSS AccessKey Secret
+     */
     @Value("${aliyun.oss.accessKeySecret}")
     private String accessKeySecret;
 
+    /**
+     * OSS 存储空间名称
+     */
     @Value("${aliyun.oss.bucketName}")
     private String bucketName;
 
     /**
      * 实现上传图片到OSS
+     * @param multipartFile 上传的图片文件
+     * @return 图片访问 URL
+     * @throws IOException 读取文件流失败
      */
     public String upload(MultipartFile multipartFile) throws IOException {
         // 获取上传的文件的输入流

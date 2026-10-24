@@ -55,6 +55,8 @@ public interface SmartReadingAssistant {
 
     /**
      * 翻译英文标题
+     * @param message 英文标题
+     * @return 中文翻译
      */
     @SystemMessage("你是专业的英语老师，将英文标题翻译成中文，直接给出中文翻译，不要响应其它文字。")
     String translateTitle(String message);

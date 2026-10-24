@@ -16,8 +16,14 @@ import java.util.Properties;
  */
 @Component
 public class EmailUtils {
+    /**
+     * SMTP 服务器地址
+     */
     @Value("${email.host}")
     private  String SMTP_HOST ;
+    /**
+     * SMTP 端口，使用 SSL 时通常为 465
+     */
     @Value("${email.port}")
     private  String SMTP_PORT ;
     /**

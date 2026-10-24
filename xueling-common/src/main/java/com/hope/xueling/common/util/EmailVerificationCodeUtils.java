@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * 邮件验证码服务类（Redis存储版）
  * 负责生成、发送、验证和管理验证码
+ * @author 谢光湘
+ * @since 2026/10/24
  */
 @Slf4j
 @Component
@@ -30,8 +32,17 @@ public class EmailVerificationCodeUtils {
      * Redis存储前缀
      */
     private static final String REDIS_KEY_PREFIX = "email:code:";
+    /**
+     * 验证码错误次数在 Redis 中的键前缀
+     */
     private static final String ATTEMPTS_KEY_PREFIX = "email:code:attempts:";
+    /**
+     * 单个验证码允许的最大校验失败次数
+     */
     private static final int MAX_VERIFY_ATTEMPTS = 5;
+    /**
+     * 验证码随机源，使用 SecureRandom 避免可预测序列
+     */
     private static final SecureRandom RANDOM = new SecureRandom();
     /**
      * 验证码有效期（分钟）
@@ -56,10 +67,19 @@ public class EmailVerificationCodeUtils {
      */
     @Value("${email.host}")
     private String SMTP_HOST;
+    /**
+     * SMTP 端口，使用 SSL 时通常为 465
+     */
     @Value("${email.port}")
     private String SMTP_PORT;
+    /**
+     * 发件人邮箱账号
+     */
     @Value("${email.username}")
     private String SMTP_USER;
+    /**
+     * SMTP 授权码（非邮箱登录密码）
+     */
     @Value("${email.password}")
     private String SMTP_PASSWORD; // SMTP授权码
 
@@ -69,6 +89,10 @@ public class EmailVerificationCodeUtils {
     private final StringRedisTemplate stringRedisTemplate;
 
 
+    /**
+     * 注入 Redis 客户端
+     * @param stringRedisTemplate 验证码与发送频率的存储
+     */
     public EmailVerificationCodeUtils(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }

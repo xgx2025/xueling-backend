@@ -18,13 +18,26 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-/** Authenticates bearer tokens before Spring Security evaluates route permissions. */
+/**
+ * JWT 鉴权过滤器：在 Spring Security 判定路由权限之前解析 Bearer 访问令牌，
+ * 把用户 ID 写入认证上下文、把令牌载荷写入线程上下文，并按白名单授予 ROLE_ADMIN。
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenUtils jwtTokenUtils;
     private final AdminAccessPolicy adminAccessPolicy;
 
+    /**
+     * 解析并校验访问令牌；未携带 Authorization 头时按匿名请求放行，由路由规则决定是否拒绝
+     * @param request 当前请求
+     * @param response 当前响应
+     * @param chain 过滤器链
+     * @throws ServletException Servlet 异常
+     * @throws IOException IO 异常
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
