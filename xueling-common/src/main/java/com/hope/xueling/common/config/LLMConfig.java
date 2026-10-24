@@ -27,8 +27,14 @@ public class LLMConfig {
      */
     @Value("${llm.doubao.api-key}")
     private String doubaoApiKey;
+    /**
+     * 豆包模型名称
+     */
     @Value("${llm.doubao.model}")
     private String doubaoModel;
+    /**
+     * 豆包 OpenAI 兼容接口地址
+     */
     @Value("${llm.doubao.url}")
     private String doubaoUrl;
     /**
@@ -36,10 +42,19 @@ public class LLMConfig {
      */
     @Value("${llm.deepseek.api-key}")
     private String deepSeekApiKey;
+    /**
+     * DeepSeek OpenAI 兼容接口地址
+     */
     @Value("${llm.deepseek.url}")
     private String deepSeekUrl;
+    /**
+     * DeepSeek 对话模型名称
+     */
     @Value("${llm.deepseek.chat-model}")
     private String deepSeekChatModel;
+    /**
+     * DeepSeek 推理模型名称
+     */
     @Value("${llm.deepseek.reasoner-model}")
     private String deepSeekReasonerModel;
     /**
@@ -47,8 +62,14 @@ public class LLMConfig {
      */
     @Value("${llm.zhipu.api-key}")
     private String zhipuApiKey;
+    /**
+     * 智谱 OpenAI 兼容接口地址
+     */
     @Value("${llm.zhipu.url}")
     private String zhipuUrl;
+    /**
+     * 智谱图像生成模型名称
+     */
     @Value("${llm.zhipu.image-model}")
     private String zhipuImageModel;
 

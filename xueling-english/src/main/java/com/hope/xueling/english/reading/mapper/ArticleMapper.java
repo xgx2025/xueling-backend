@@ -34,6 +34,12 @@ public interface ArticleMapper {
             "from article where category_id = #{categoryId} and publish_status = 'PUBLISHED' order by create_time desc, id desc")
     List<ArticleListVO> selectArticlesByCategoryId(Long categoryId);
 
+    /**
+     * 按分类查询用户可读的已发布文章（含正文）：免费文章对所有用户开放，非免费文章要求账号正常且会员在有效期内
+     * @param categoryId 分类 ID
+     * @param userId 用户 ID
+     * @return 文章列表
+     */
     @Select("select id, title, chinese_title, category_id, tag, author, content, chinese_meaning, " +
             "vocabulary_phrases_summary, article_insights, image_url, is_free, create_time, update_time " +
             "from article where category_id = #{categoryId} and publish_status = 'PUBLISHED' " +
@@ -44,6 +50,12 @@ public interface ArticleMapper {
     List<Article> selectReadableArticlesByCategoryId(@Param("categoryId") Long categoryId,
                                                      @Param("userId") Long userId);
 
+    /**
+     * 查询用户可读的已发布文章详情，可见性规则同列表查询
+     * @param articleId 文章 ID
+     * @param userId 用户 ID
+     * @return 文章详情，不可见时返回 null
+     */
     @Select("select id, title, chinese_title, category_id, tag, author, content, chinese_meaning, " +
             "vocabulary_phrases_summary, article_insights, image_url, is_free, create_time, update_time " +
             "from article where id = #{articleId} and publish_status = 'PUBLISHED' " +
@@ -52,6 +64,11 @@ public interface ArticleMapper {
             "and u.vip_start_at <= CURRENT_TIMESTAMP and u.vip_expire_at > CURRENT_TIMESTAMP))")
     Article selectPublishedArticleById(@Param("articleId") Long articleId, @Param("userId") Long userId);
 
+    /**
+     * 查询已发布文章的免费标记，用于可见性判断
+     * @param articleId 文章 ID
+     * @return 是否免费；文章不存在或未发布时返回 null
+     */
     @Select("select is_free from article where id = #{articleId} and publish_status = 'PUBLISHED'")
     Boolean selectPublishedIsFree(Long articleId);
 

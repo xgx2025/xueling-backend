@@ -19,6 +19,11 @@ import java.util.regex.Pattern;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    /**
+     * 处理无权访问异常，返回 403 与对应提示
+     * @param e 无权访问异常
+     * @return 统一失败响应
+     */
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<Result<String>> handleForbiddenException(ForbiddenException e) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Result.fail(ResultCode.FORBIDDEN, e.getMessage()));

@@ -20,6 +20,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
+    /**
+     * JWT 鉴权过滤器，挂载到 Spring Security 过滤链
+     */
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
@@ -57,6 +60,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * 禁用过滤器的 Servlet 自动注册，避免容器与 Spring Security 各执行一次
+     * @return 已禁用的过滤器注册对象
+     */
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration() {
         FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(jwtAuthenticationFilter);

@@ -6,6 +6,11 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+/**
+ * 用户 Mapper：提供账号状态更新、会员有效性判断与账号状态查询
+ * @author 谢光湘
+ * @since 2026/10/24
+ */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
 
